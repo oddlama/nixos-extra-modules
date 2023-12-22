@@ -25,9 +25,14 @@
   in
     lib.mkIf (config.boot.mode != null)
     {
-      "efi" = efi-conf;
-      "bios" = bios-conf;
-      "secureboot" = throw "not yet implemented";
+      efi = efi-conf;
+      bios = bios-conf;
+      secureboot = throw "not yet implemented";
+      "" = {};
     }
-    .${config.boot.mode};
+    .${
+      if config.boot.mode == null
+      then ""
+      else config.boot.mode
+    };
 }
