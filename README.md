@@ -15,13 +15,12 @@ will be available.
 {
   inputs.extra-modules.url = "github:oddlama/extra-modules";
 
-  outputs = { self, nixpkgs, agenix, agenix-rekey }: {
+  outputs = { self, nixpkgs, extra-modules }: {
     # Example system configuration
     nixosConfigurations.yourhostname = nixpkgs.lib.nixosSystem {
       system = "x86_64-linux";
       modules = [
         ./configuration.nix
-        agenix.nixosModules.default
         extra-modules.nixosModules.default
       ];
     };
