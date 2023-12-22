@@ -25,7 +25,7 @@
     ...
   }:
     {
-      nixosModules.extra-modules = import ./modules nixpkgs;
+      nixosModules.extra-modules = import ./modules;
       nixosModules.default = self.nixosModules.extra-modules;
     }
     // flake-utils.lib.eachDefaultSystem (system: rec {
