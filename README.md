@@ -26,3 +26,12 @@ will be available.
     };
   }
 }
+```
+
+## Requirements
+
+Certain modules may require the use of additional flakes. In particular you might need:
+
+- [impermanence](https://github.com/nix-community/impermanence)
+- [agenix](https://github.com/ryantm/agenix)
+- [agenix-rekey](https://github.com/oddlama/agenix-rekey)

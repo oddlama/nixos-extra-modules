@@ -48,6 +48,9 @@
         };
       };
 
+      # `nix fmt`
+      formatter = pkgs.alejandra;
+
       # `nix develop`
       devShells.default = pkgs.devshell.mkShell {
         name = "extra-modules";
