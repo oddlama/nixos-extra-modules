@@ -27,6 +27,8 @@
     {
       nixosModules.extra-modules = import ./modules;
       nixosModules.default = self.nixosModules.extra-modules;
+      homeManagerModules.extra-modules = import ./hm-modules;
+      homeManagerModules.default = self.homeManagerModules.extra-modules;
     }
     // flake-utils.lib.eachDefaultSystem (system: rec {
       pkgs = import nixpkgs {
