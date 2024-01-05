@@ -94,7 +94,6 @@ in {
       # Default host that rejects everything.
       # This is selected when no matching host is found for a request.
       virtualHosts.dummy = {
-        listenAddresses = ["127.0.0.1" "[::1]"];
         default = true;
         rejectSSL = true;
         locations."/".extraConfig = ''
