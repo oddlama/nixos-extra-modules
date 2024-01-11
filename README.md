@@ -35,3 +35,6 @@ Certain modules may require the use of additional flakes. In particular you migh
 - [impermanence](https://github.com/nix-community/impermanence)
 - [agenix](https://github.com/ryantm/agenix)
 - [agenix-rekey](https://github.com/oddlama/agenix-rekey)
+- [microvm.nix](https://github.com/astro/microvm.nix)
+
+You also must have a `specialArgs.inputs` that refers to all of your flake's inputs.
