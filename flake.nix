@@ -1,4 +1,6 @@
 {
+  description = "Extra modules that nobody needs.";
+
   inputs = {
     devshell = {
       url = "github:numtide/devshell";
@@ -21,7 +23,6 @@
     };
   };
 
-  description = "Extra modules that nobody needs.";
   outputs = {
     self,
     nixpkgs,
@@ -31,12 +32,12 @@
     ...
   } @ inputs:
     {
-      nixosModules.extra-modules = import ./modules;
-      nixosModules.default = self.nixosModules.extra-modules;
-      homeManagerModules.extra-modules = import ./hm-modules;
-      homeManagerModules.default = self.homeManagerModules.extra-modules;
-      overlays.extra-modules = import ./lib inputs;
-      overlays.default = self.overlays.extra-modules;
+      nixosModules.nixos-extra-modules = import ./modules;
+      nixosModules.default = self.nixosModules.nixos-extra-modules;
+      homeManagerModules.nixos-extra-modules = import ./hm-modules;
+      homeManagerModules.default = self.homeManagerModules.nixos-extra-modules;
+      overlays.nixos-extra-modules = import ./lib inputs;
+      overlays.default = self.overlays.nixos-extra-modules;
     }
     // flake-utils.lib.eachDefaultSystem (system: rec {
       pkgs = import nixpkgs {
@@ -61,7 +62,7 @@
 
       # `nix develop`
       devShells.default = pkgs.devshell.mkShell {
-        name = "extra-modules";
+        name = "nixos-extra-modules";
         commands = with pkgs; [
           {
             package = alejandra;

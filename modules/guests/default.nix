@@ -46,7 +46,7 @@
   defineGuest = _guestName: guestCfg: {
     # Add the required datasets to the disko configuration of the machine
     disko.devices.zpool = mkMerge (flip map (attrValues guestCfg.zfs) (zfsCfg: {
-      ${zfsCfg.pool}.datasets.${zfsCfg.dataset} = disko.filesystem zfsCfg.hostMountpoint;
+      ${zfsCfg.pool}.datasets.${zfsCfg.dataset} = disko.zfs.filesystem zfsCfg.hostMountpoint;
     }));
 
     # Ensure that the zfs dataset exists before it is mounted.
