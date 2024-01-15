@@ -18,7 +18,7 @@ EFI/BIOS boot config | Module | [Link](./modules/boot.nix) | - | - | Allows you 
 Nginx recommended options | Module | [Link](./modules/nginx.nix) | - | agenix | Sets many recommended settings for nginx with a single switch plus some opinionated defaults. Also adds a switch for setting recommended security headers on each location.
 Node options | Module | [Link](./modules/node.nix) | - | - | A module that stores meta information about your nodes (hosts). Required for some other modules that operate across nodes.
 Guests (MicroVMs & Containers) | Module | [Link](./modules/guests) | zfs, node options | - | This module implements a common interface to use guest systems with microvms or nixos-containers.
-Restic hetzner storage box setup | Module | [Link](./modules/restic.nix) | - | - | This module exposes new options for restic backups that allow a simple setup of hetzner storage boxes. There's [an app](./apps/setup-hetzner-storage-boxes.nix) that you should expose on your flake to automate remote setup.
+Restic hetzner storage box setup | Module | [Link](./modules/restic.nix) | agenix, agenix-rekey | - | This module exposes new options for restic backups that allow a simple setup of hetzner storage boxes. There's [an app](./apps/setup-hetzner-storage-boxes.nix) that you should expose on your flake to automate remote setup.
 
 #### Home Manager Modules
 

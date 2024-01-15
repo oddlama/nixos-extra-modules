@@ -28,7 +28,10 @@
       hostCfg:
         flip map (attrValues hostCfg.config.services.restic.backups) (
           backupCfg:
-            optional backupCfg.hetznerStorageBox.enable backupCfg.hetznerStorageBox
+            optional backupCfg.hetznerStorageBox.enable (
+              backupCfg.hetznerStorageBox
+              // {sshPrivateKeyFile = hostCfg.config.age.secrets.${backupCfg.sshAgeSecret}.rekeyFile;}
+            )
         )
     )
   );

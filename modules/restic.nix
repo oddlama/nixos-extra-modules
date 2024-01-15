@@ -1,4 +1,8 @@
-{lib, ...}: let
+{
+  lib,
+  config,
+  ...
+}: let
   inherit
     (lib)
     mkEnableOption
@@ -8,7 +12,7 @@
     ;
 in {
   options.services.restic.backups = mkOption {
-    type = types.attrsOf (types.submodule ({config, ...}: {
+    type = types.attrsOf (types.submodule (submod: {
       options.hetznerStorageBox = {
         enable = mkEnableOption "Automatically configure this backup to use the given hetzner storage box. Will use SFTP via SSH.";
 
@@ -35,20 +39,20 @@ in {
           '';
         };
 
-        sshPrivateKeyFile = mkOption {
-          type = types.path;
-          description = "The path to the ssh private key to use for uploading backups. Don't use a path from the nix store!";
+        sshAgeSecret = mkOption {
+          type = types.str;
+          description = "The name of the agenix secret containing the ssh private key for accesing the storage box.";
         };
       };
 
       config = let
-        subuser = "${config.hetznerStorageBox.mainUser}-sub${toString config.hetznerStorageBox.subUid}";
+        subuser = "${submod.config.hetznerStorageBox.mainUser}-sub${toString submod.config.hetznerStorageBox.subUid}";
         url = "${subuser}@${subuser}.your-storagebox.de";
       in
-        mkIf config.hetznerStorageBox.enable {
+        mkIf submod.config.hetznerStorageBox.enable {
           repository = "sftp://${url}:23/";
           extraOptions = [
-            "sftp.command='ssh -s sftp -p 23 -i ${config.hetznerStorageBox.sshPrivateKeyFile} ${url}'"
+            "sftp.command='ssh -s sftp -p 23 -i ${config.age.secrets.${submod.config.hetznerStorageBox.sshAgeSecret}.path} ${url}'"
           ];
         };
     }));
