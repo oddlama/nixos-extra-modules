@@ -5,10 +5,15 @@
 }: let
   inherit
     (lib)
+    flatten
+    flip
+    mapAttrsToList
     mkEnableOption
     mkIf
     mkOption
+    optional
     types
+    unique
     ;
 in {
   options.services.restic.backups = mkOption {
@@ -47,14 +52,24 @@ in {
 
       config = let
         subuser = "${submod.config.hetznerStorageBox.mainUser}-sub${toString submod.config.hetznerStorageBox.subUid}";
-        url = "${subuser}@${subuser}.your-storagebox.de";
+        url = "${subuser}@${submod.config.hetznerStorageBox.mainUser}.your-storagebox.de";
       in
         mkIf submod.config.hetznerStorageBox.enable {
           repository = "sftp://${url}:23/";
           extraOptions = [
-            "sftp.command='ssh -s sftp -p 23 -i ${config.age.secrets.${submod.config.hetznerStorageBox.sshAgeSecret}.path} ${url}'"
+            "sftp.command='ssh -p23 ${url} -i ${config.age.secrets.${submod.config.hetznerStorageBox.sshAgeSecret}.path} -s sftp'"
           ];
         };
     }));
   };
+
+  config.services.openssh.knownHosts.hetzner-storage-boxes = let
+    hetznerStorageBoxHostnames =
+      unique (flatten (flip mapAttrsToList config.services.restic.backups
+          (_: backupCfg: optional backupCfg.hetznerStorageBox.enable "[${backupCfg.hetznerStorageBox.mainUser}.your-storagebox.de]:23")));
+  in
+    mkIf (hetznerStorageBoxHostnames != []) {
+      publicKey = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIICf9svRenC/PLKIL9nk6K/pxQgoiFC41wTNvoIncOxs";
+      hostNames = hetznerStorageBoxHostnames;
+    };
 }
