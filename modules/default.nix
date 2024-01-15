@@ -7,6 +7,7 @@
     ./interface-naming.nix
     ./nginx.nix
     ./node.nix
+    ./restic.nix
   ];
 
   nixpkgs.overlays = [
