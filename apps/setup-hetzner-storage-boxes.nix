@@ -30,7 +30,7 @@
           backupCfg:
             optional backupCfg.hetznerStorageBox.enable (
               backupCfg.hetznerStorageBox
-              // {sshPrivateKeyFile = hostCfg.config.age.secrets.${backupCfg.sshAgeSecret}.rekeyFile;}
+              // {sshPrivateKeyFile = hostCfg.config.age.secrets.${backupCfg.hetznerStorageBox.sshAgeSecret}.rekeyFile;}
             )
         )
     )
