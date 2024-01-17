@@ -46,14 +46,25 @@
   defineGuest = _guestName: guestCfg: {
     # Add the required datasets to the disko configuration of the machine
     disko.devices.zpool = mkMerge (flip map (attrValues guestCfg.zfs) (zfsCfg: {
-      ${zfsCfg.pool}.datasets.${zfsCfg.dataset} = disko.zfs.filesystem zfsCfg.hostMountpoint;
+      ${zfsCfg.pool}.datasets.${zfsCfg.dataset} =
+        if !zfsCfg.shared
+        then disko.zfs.filesystem zfsCfg.hostMountpoint
+        else disko.zfs.unmountable;
+    }));
+    # Add the required fileSystems for shared folders
+    fileSystems = mkMerge (flip map (attrValues guestCfg.zfs) (zfsCfg: {
+      ${zfsCfg.hostMountpoint} = {
+        fsType = "zfs";
+        options = ["zfsutil"];
+        device = "${zfsCfg.pool}/${zfsCfg.dataset}";
+      };
     }));
 
     # Ensure that the zfs dataset exists before it is mounted.
     systemd.services = mkMerge (flip map (attrValues guestCfg.zfs) (zfsCfg: let
       fsMountUnit = "${utils.escapeSystemdPath zfsCfg.hostMountpoint}.mount";
     in {
-      "zfs-ensure-${utils.escapeSystemdPath zfsCfg.hostMountpoint}" = {
+      "zfs-ensure-${utils.escapeSystemdPath "${zfsCfg.pool}/${zfsCfg.dataset}"}" = {
         wantedBy = [fsMountUnit];
         before = [fsMountUnit];
         after = [
@@ -237,6 +248,13 @@ in {
                 example = "/persist";
                 description = "The mountpoint inside the guest.";
               };
+
+              shared = mkOption {
+                type = types.bool;
+                default = false;
+                example = true;
+                description = "Whether this mountpoint will be shared between different guests. This will prevent disko from creating a entry to config.filesSystems.";
+              };
             };
           }));
         };
@@ -273,7 +291,7 @@ in {
             )
         ));
       }
-      (mergeToplevelConfigs ["disko" "systemd"] (mapAttrsToList defineGuest config.guests))
+      (mergeToplevelConfigs ["disko" "systemd" "fileSystems"] (mapAttrsToList defineGuest config.guests))
       (mergeToplevelConfigs ["containers" "systemd"] (mapAttrsToList defineContainer guestsByBackend.container))
       (mergeToplevelConfigs ["microvm" "systemd"] (mapAttrsToList defineMicrovm guestsByBackend.microvm))
     ]
