@@ -51,6 +51,7 @@
         then disko.zfs.filesystem zfsCfg.hostMountpoint
         else disko.zfs.unmountable;
     }));
+
     # Add the required fileSystems for shared folders
     fileSystems = mkMerge (flip map (attrValues guestCfg.zfs) (zfsCfg: {
       ${zfsCfg.hostMountpoint} = {
@@ -280,6 +281,9 @@ in {
         systemd.tmpfiles.rules = [
           "d /guests 0700 root root -"
         ];
+
+        fileSystems =
+          # for guests filter zfs shared, group by mountpoint, fold and add dependencies.
 
         assertions = flatten (flip mapAttrsToList config.guests (
           guestName: guestCfg:
