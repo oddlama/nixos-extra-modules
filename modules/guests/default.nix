@@ -14,7 +14,9 @@
     escapeShellArg
     flatten
     flip
+    foldl'
     groupBy
+    hasInfix
     hasPrefix
     listToAttrs
     literalExpression
@@ -26,7 +28,9 @@
     mkMerge
     mkOption
     net
+    optional
     types
+    warnIf
     ;
 
   # All available backends
@@ -47,18 +51,8 @@
     # Add the required datasets to the disko configuration of the machine
     disko.devices.zpool = mkMerge (flip map (attrValues guestCfg.zfs) (zfsCfg: {
       ${zfsCfg.pool}.datasets.${zfsCfg.dataset} =
-        if !zfsCfg.shared
-        then disko.zfs.filesystem zfsCfg.hostMountpoint
-        else disko.zfs.unmountable;
-    }));
-
-    # Add the required fileSystems for shared folders
-    fileSystems = mkMerge (flip map (attrValues guestCfg.zfs) (zfsCfg: {
-      ${zfsCfg.hostMountpoint} = {
-        fsType = "zfs";
-        options = ["zfsutil"];
-        device = "${zfsCfg.pool}/${zfsCfg.dataset}";
-      };
+        # We generate the mountpoint fileSystems entries ourselfs to enable shared folders between guests
+        disko.zfs.unmountable;
     }));
 
     # Ensure that the zfs dataset exists before it is mounted.
@@ -249,13 +243,6 @@ in {
                 example = "/persist";
                 description = "The mountpoint inside the guest.";
               };
-
-              shared = mkOption {
-                type = types.bool;
-                default = false;
-                example = true;
-                description = "Whether this mountpoint will be shared between different guests. This will prevent disko from creating a entry to config.filesSystems.";
-              };
             };
           }));
         };
@@ -282,8 +269,47 @@ in {
           "d /guests 0700 root root -"
         ];
 
-        fileSystems =
-          # for guests filter zfs shared, group by mountpoint, fold and add dependencies.
+        # To enable shared folders we need to do all fileSystems entries ourselfs
+        fileSystems = let
+          zfsDefs = flatten (flip mapAttrsToList config.guests (
+            _: guestCfg:
+              flip mapAttrsToList guestCfg.zfs (
+                _: zfsCfg: {
+                  path = "${zfsCfg.pool}/${zfsCfg.dataset}";
+                  inherit (zfsCfg) hostMountpoint;
+                }
+              )
+          ));
+          # Due to limitations in zfs mounting we need to explicitly set an order in which
+          # any dataset gets mounted
+          zfsDefsByPath = flip groupBy zfsDefs (x: x.path);
+        in
+          mkMerge (flip mapAttrsToList zfsDefsByPath (_: defs:
+            (foldl' ({
+                prev,
+                res,
+              }: elem: {
+                prev = elem;
+                res =
+                  res
+                  // {
+                    ${elem.hostMountpoint} = {
+                      fsType = "zfs";
+                      options =
+                        ["zfsutil"]
+                        ++ optional (prev != null) "x-systemd.requires-mounts-for=${warnIf
+                          (hasInfix " " prev.hostMountpoint) "HostMountpoint ${prev.hostMountpoint} cannot contain a space"
+                          prev.hostMountpoint}";
+                      device = elem.path;
+                    };
+                  };
+              })
+              {
+                prev = null;
+                res = {};
+              }
+              defs)
+            .res));
 
         assertions = flatten (flip mapAttrsToList config.guests (
           guestName: guestCfg:
