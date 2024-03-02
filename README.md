@@ -12,7 +12,7 @@ be changed unless you decide you want to use that specific module.
 
 | Name | Type | Source | Requires | Optional deps | Description |
 |---|---|---|---|---|---|
-Networking library and extensions | Lib | [Link](./lib/net.nix) | - | - | Integrates [this libary](https://gist.github.com/duairc/5c9bb3c922e5d501a1edb9e7b3b845ba) which adds option types for IPss, CIDRs, MACs, and more. Also adds some extensions for missing functions and cross-node hashtable-based lazy IP/MAC assignment.
+Networking library and extensions | Lib | [Link](./lib/net.nix) | - | - | Integrates [this libary](https://gist.github.com/duairc/5c9bb3c922e5d501a1edb9e7b3b845ba) which adds option types for IPs, CIDRs, MACs, and more. Also adds some extensions for missing functions and cross-node hashtable-based lazy IP/MAC assignment.
 Interface naming by MAC | Module | [Link](./modules/interface-naming.nix) | - | - | Allows you to define pairs of MAC address and interface name which will be enforced via udev as early as possible.
 EFI/BIOS boot config | Module | [Link](./modules/boot.nix) | - | - | Allows you to specify a boot type (bios/efi) and the correct loader will automatically be configured
 Nginx recommended options | Module | [Link](./modules/nginx.nix) | - | agenix | Sets many recommended settings for nginx with a single switch plus some opinionated defaults. Also adds a switch for setting recommended security headers on each location.

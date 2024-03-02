@@ -15,13 +15,13 @@ _inputs: final: prev: {
           };
         };
         gpt = {
-          partGrub = name: start: end: {
-            inherit name start end;
+          partGrub = start: end: {
+            inherit start end;
             part-type = "primary";
             flags = ["bios_grub"];
           };
-          partEfi = name: start: end: {
-            inherit name start end;
+          partEfi = start: end: {
+            inherit start end;
             fs-type = "fat32";
             bootable = true;
             content = {
@@ -30,8 +30,8 @@ _inputs: final: prev: {
               mountpoint = "/boot";
             };
           };
-          partSwap = name: start: end: {
-            inherit name start end;
+          partSwap = start: end: {
+            inherit start end;
             fs-type = "linux-swap";
             content = {
               type = "swap";
@@ -40,7 +40,6 @@ _inputs: final: prev: {
           };
           partLuksZfs = luksName: pool: start: end: {
             inherit start end;
-            name = "${pool}_${luksName}";
             content = final.lib.disko.content.luksZfs luksName pool;
           };
         };
