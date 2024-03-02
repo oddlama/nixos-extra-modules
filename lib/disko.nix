@@ -17,13 +17,12 @@ _inputs: final: prev: {
         gpt = {
           partGrub = start: end: {
             inherit start end;
-            part-type = "primary";
-            flags = ["bios_grub"];
+            type = "ef02";
           };
           partEfi = start: end: {
             inherit start end;
-            fs-type = "fat32";
-            bootable = true;
+            type = "ef00";
+            hybrid.mbrBootableFlag = true;
             content = {
               type = "filesystem";
               format = "vfat";
@@ -32,7 +31,6 @@ _inputs: final: prev: {
           };
           partSwap = start: end: {
             inherit start end;
-            fs-type = "linux-swap";
             content = {
               type = "swap";
               randomEncryption = true;
