@@ -8,6 +8,7 @@
     ./nginx.nix
     ./node.nix
     ./restic.nix
+    ./wireguard.nix
   ];
 
   nixpkgs.overlays = [

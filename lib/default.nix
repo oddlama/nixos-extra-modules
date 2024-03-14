@@ -11,6 +11,8 @@ prev.lib.composeManyExtensions (
     ./disko.nix
     # Requires misc
     ./net.nix
+    # Requires misc, types
+    ./wireguard.nix
   ]
 )
 final
