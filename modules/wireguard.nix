@@ -170,7 +170,7 @@
         // listToAttrs (flip map participatingNodes (
           peer:
             nameValuePair "wg-${wgCfg.linkName}-node-${peer}-to-${localZoneName}" (
-              mkIf (wgCfg.firewallRuleForNode ? peer) {
+              mkIf (wgCfg.firewallRuleForNode ? ${peer}) {
                 from = ["wg-${wgCfg.linkName}-node-${peer}"];
                 to = [localZoneName];
                 ignoreEmptyRule = true;

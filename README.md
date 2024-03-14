@@ -19,7 +19,7 @@ Nginx recommended options | Module | [Link](./modules/nginx.nix) | - | agenix | 
 Node options | Module | [Link](./modules/node.nix) | - | - | A module that stores meta information about your nodes (hosts). Required for some other modules that operate across nodes.
 Guests (MicroVMs & Containers) | Module | [Link](./modules/guests) | zfs, disko, node options | - | This module implements a common interface to use guest systems with microvms or nixos-containers.
 Restic hetzner storage box setup | Module | [Link](./modules/restic.nix) | agenix, agenix-rekey | - | This module exposes new options for restic backups that allow a simple setup of hetzner storage boxes. There's [an app](./apps/setup-hetzner-storage-boxes.nix) that you should expose on your flake to automate remote setup.
-Wireguard overlay networks | Module | [Link](./modules/wireguard.nix) | agenix, agenix-rekey, nftables-firewall, specialArgs.nodes | - | This module automatically creates cross-node wireguard networks including automatic semi-stable ip address assignments
+Wireguard overlay networks | Module | [Link](./modules/wireguard.nix) | agenix, agenix-rekey, nftables-firewall, inputs.self.nodes | - | This module automatically creates cross-node wireguard networks including automatic semi-stable ip address assignments
 
 #### Home Manager Modules
 
