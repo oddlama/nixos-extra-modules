@@ -284,7 +284,7 @@
           ];
     };
 
-    systemd.network.networks."${wgCfg.unitConfName}" = {
+    systemd.network.networks.${wgCfg.unitConfName} = {
       matchConfig.Name = wgCfg.linkName;
       address = map toNetworkAddr wgCfg.addresses;
     };

@@ -140,11 +140,11 @@ in {
           (filter (x: net.cidr.contains x spannedReservedNetwork.cidrv4) (filter net.ip.isv4 explicitlyUsedAddresses))
           participatingNodes;
 
-        # Assigns an ipv4 address from spannedReservedNetwork.cidrv4
-        # to each participant that has not explicitly specified an ipv4 address.
+        # Assigns an ipv6 address from spannedReservedNetwork.cidrv6
+        # to each participant that has not explicitly specified an ipv6 address.
         assignedIpv6Addresses = assert assertMsg
         (spannedReservedNetwork.cidrv6 != null)
-        "Wireguard network '${wgName}': At least one participating node must reserve a cidrv6 address via `reservedAddresses` so that ipv4 addresses can be assigned automatically from that network.";
+        "Wireguard network '${wgName}': At least one participating node must reserve a cidrv6 address via `reservedAddresses` so that ipv6 addresses can be assigned automatically from that network.";
           net.cidr.assignIps
           spannedReservedNetwork.cidrv6
           # Don't assign any addresses that are explicitly configured on other hosts
