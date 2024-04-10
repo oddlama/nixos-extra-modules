@@ -14,30 +14,37 @@ _inputs: final: prev: {
             };
           };
         };
-        gpt = {
-          partGrub = start: end: {
-            inherit start end;
+        gpt = rec {
+          partGrub = {
+            priority = 1;
+            size = "1M";
             type = "ef02";
           };
-          partEfi = start: end: {
-            inherit start end;
+          partEfi = size: {
+            inherit size;
+            priority = 1000;
             type = "ef00";
-            hybrid.mbrBootableFlag = true;
             content = {
               type = "filesystem";
               format = "vfat";
               mountpoint = "/boot";
             };
           };
-          partSwap = start: end: {
-            inherit start end;
+          partBoot = size:
+            partEfi size
+            // {
+              hybrid.mbrBootableFlag = true;
+            };
+          partSwap = size: {
+            inherit size;
+            priority = 2000;
             content = {
               type = "swap";
               randomEncryption = true;
             };
           };
-          partLuksZfs = luksName: pool: start: end: {
-            inherit start end;
+          partLuksZfs = luksName: pool: size: {
+            inherit size;
             content = final.lib.disko.content.luksZfs luksName pool;
           };
         };
