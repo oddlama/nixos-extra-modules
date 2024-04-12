@@ -29,6 +29,7 @@
     mkOption
     net
     optional
+    optionalAttrs
     types
     warnIf
     ;
@@ -128,9 +129,12 @@ in {
         default = null;
         description = "Set this to the result of a `nixosSystem` invocation to use it as the guest system. This will set the `path` option for you.";
       };
-      config = mkIf (submod.config.nixosConfiguration != null) {
-        path = submod.config.nixosConfiguration.config.system.build.toplevel;
-      };
+      config = mkIf (submod.config.nixosConfiguration != null) ({
+          path = submod.config.nixosConfiguration.config.system.build.toplevel;
+        }
+        // optionalAttrs (config ? topology) {
+          _nix_topology_config = submod.config.nixosConfiguration.config;
+        });
     }));
   };
 
