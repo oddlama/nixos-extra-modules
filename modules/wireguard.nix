@@ -231,43 +231,37 @@
           map (serverNode: let
             snCfg = wgCfgOf serverNode;
           in {
-            wireguardPeerConfig = {
-              PublicKey = builtins.readFile (peerPublicKeyPath serverNode);
-              PresharedKeyFile = config.age.secrets.${peerPresharedKeySecret nodeName serverNode}.path;
-              AllowedIPs = serverAllowedIPs serverNode;
-              Endpoint = "${snCfg.server.host}:${toString snCfg.server.port}";
-            };
+            PublicKey = builtins.readFile (peerPublicKeyPath serverNode);
+            PresharedKeyFile = config.age.secrets.${peerPresharedKeySecret nodeName serverNode}.path;
+            AllowedIPs = serverAllowedIPs serverNode;
+            Endpoint = "${snCfg.server.host}:${toString snCfg.server.port}";
           })
           (filterSelf participatingServerNodes)
           # All our external peers
           ++ mapAttrsToList (extPeer: ips: let
             peerName = externalPeerName extPeer;
           in {
-            wireguardPeerConfig = {
-              PublicKey = builtins.readFile (peerPublicKeyPath peerName);
-              PresharedKeyFile = config.age.secrets.${peerPresharedKeySecret nodeName peerName}.path;
-              AllowedIPs = map (net.cidr.make 128) ips;
-              # Connections to external peers should always be kept alive
-              PersistentKeepalive = 25;
-            };
+            PublicKey = builtins.readFile (peerPublicKeyPath peerName);
+            PresharedKeyFile = config.age.secrets.${peerPresharedKeySecret nodeName peerName}.path;
+            AllowedIPs = map (net.cidr.make 128) ips;
+            # Connections to external peers should always be kept alive
+            PersistentKeepalive = 25;
           })
           wgCfg.server.externalPeers
           # All client nodes that have their via set to us.
           ++ map (clientNode: let
             clientCfg = wgCfgOf clientNode;
           in {
-            wireguardPeerConfig = {
-              PublicKey = builtins.readFile (peerPublicKeyPath clientNode);
-              PresharedKeyFile = config.age.secrets.${peerPresharedKeySecret nodeName clientNode}.path;
-              AllowedIPs = map (net.cidr.make 128) clientCfg.addresses;
-            };
+            PublicKey = builtins.readFile (peerPublicKeyPath clientNode);
+            PresharedKeyFile = config.age.secrets.${peerPresharedKeySecret nodeName clientNode}.path;
+            AllowedIPs = map (net.cidr.make 128) clientCfg.addresses;
           })
           ourClientNodes
         else
           # We are a client node, so only include our via server.
           [
-            {
-              wireguardPeerConfig = let
+            (
+              let
                 snCfg = wgCfgOf wgCfg.client.via;
               in
                 {
@@ -279,8 +273,8 @@
                 }
                 // optionalAttrs wgCfg.client.keepalive {
                   PersistentKeepalive = 25;
-                };
-            }
+                }
+            )
           ];
     };
 
