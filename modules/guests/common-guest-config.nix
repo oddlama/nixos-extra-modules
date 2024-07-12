@@ -9,6 +9,7 @@ in {
     optimise.automatic = mkForce false;
     gc.automatic = mkForce false;
   };
+  documentation.enable = mkForce false;
 
   systemd.network.networks."10-${guestCfg.networking.mainLinkName}" = {
     matchConfig.Name = guestCfg.networking.mainLinkName;
