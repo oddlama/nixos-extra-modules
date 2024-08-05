@@ -12,6 +12,7 @@
     filterAttrs
     flatten
     flip
+    forEach
     getExe
     groupBy
     head
@@ -24,9 +25,9 @@
     ;
 
   allBoxDefinitions = flatten (
-    flip map (attrValues nixosConfigurations) (
+    forEach (attrValues nixosConfigurations) (
       hostCfg:
-        flip map (attrValues hostCfg.config.services.restic.backups) (
+        forEach (attrValues hostCfg.config.services.restic.backups) (
           backupCfg:
             optional backupCfg.hetznerStorageBox.enable (
               backupCfg.hetznerStorageBox
@@ -42,16 +43,16 @@
   # We need to know the main storage box user to create subusers
   boxSubuserToMainUser =
     flip mapAttrs boxesBySubuser (_: boxes:
-      head (unique (flip map boxes (box: box.mainUser))));
+      head (unique (forEach boxes (box: box.mainUser))));
 
   boxSubuserToPrivateKeys =
     flip mapAttrs boxesBySubuser (_: boxes:
-      unique (flip map boxes (box: box.sshPrivateKeyFile)));
+      unique (forEach boxes (box: box.sshPrivateKeyFile)));
 
   # Any subuid that has more than one path in use
   boxSubuserToPaths =
     flip mapAttrs boxesBySubuser (_: boxes:
-      unique (flip map boxes (box: box.path)));
+      unique (forEach boxes (box: box.path)));
 
   duplicates = filterAttrs (_: boxes: length boxes > 1) boxSubuserToPaths;
 
@@ -61,10 +62,12 @@
     ${concatStringsSep "\n" (mapAttrsToList (n: v: "${n}: ${toString v}") duplicates)}
   '' (mapAttrs (_: head) boxSubuserToPaths);
 
-  appendPubkey = privateKey: ''
-    PATH="$PATH:${pkgs.age-plugin-yubikey}/bin" ${pkgs.rage}/bin/rage -d -i ${decryptIdentity} ${escapeShellArg privateKey} \
-      | (exec 3<&0; ssh-keygen -f /proc/self/fd/3 -y) \
-      >> "$TMPFILE"
+  authorizeResticCommand = privateKey: ''
+    (
+      echo -n 'command="rclone serve restic --stdio --append-only ./repo" '
+      PATH="$PATH:${pkgs.age-plugin-yubikey}/bin" ${pkgs.rage}/bin/rage -d -i ${decryptIdentity} ${escapeShellArg privateKey} \
+        | (exec 3<&0; ssh-keygen -f /proc/self/fd/3 -y)
+    ) >> "$TMPFILE"
   '';
 
   setupSubuser = subuser: privateKeys: let
@@ -77,10 +80,12 @@
     echo "${mainUser} (for ${subuser}): Creating ${path}/.ssh"
     # Create subuser directory and .ssh
     ${pkgs.openssh}/bin/ssh -p 23 "${mainUser}@${mainUser}.your-storagebox.de" -- mkdir -p ./${path}/.ssh
+    # Create repo directory
+    ${pkgs.openssh}/bin/ssh -p 23 "${mainUser}@${mainUser}.your-storagebox.de" -- mkdir -p ./${path}/repo
 
     # Derive and upload all authorized keys
     TMPFILE=$(mktemp)
-    ${concatLines (map appendPubkey privateKeys)}
+    ${concatLines (map authorizeResticCommand privateKeys)}
     echo "${mainUser} (for ${subuser}): Uploading $(wc -l < "$TMPFILE") authorized_keys"
     ${pkgs.openssh}/bin/scp -P 23 "$TMPFILE" "${mainUser}@${mainUser}.your-storagebox.de":./${path}/.ssh/authorized_keys
     rm "$TMPFILE"

@@ -55,9 +55,9 @@ in {
         url = "${subuser}@${submod.config.hetznerStorageBox.mainUser}.your-storagebox.de";
       in
         mkIf submod.config.hetznerStorageBox.enable {
-          repository = "sftp://${url}:23/";
+          repository = "rclone:";
           extraOptions = [
-            "sftp.command='ssh -p23 ${url} -i ${config.age.secrets.${submod.config.hetznerStorageBox.sshAgeSecret}.path} -s sftp'"
+            "rclone.program='ssh -p23 ${url} -i ${config.age.secrets.${submod.config.hetznerStorageBox.sshAgeSecret}.path}'"
           ];
         };
     }));
