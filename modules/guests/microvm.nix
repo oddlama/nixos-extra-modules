@@ -27,8 +27,6 @@ in {
         })
       ];
 
-    # TODO needed because of https://github.com/NixOS/nixpkgs/issues/102137
-    environment.noXlibs = mkForce false;
     lib.microvm.mac = guestCfg.microvm.mac;
 
     microvm = {
