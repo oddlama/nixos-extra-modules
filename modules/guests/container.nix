@@ -26,7 +26,7 @@ in {
         isReadOnly = false;
       }
   );
-  nixosConfiguration = inputs.nixpkgs.lib.nixosSystem {
+  nixosConfiguration = (import "${inputs.nixpkgs}/nixos/lib/eval-config.nix") {
     specialArgs = guestCfg.extraSpecialArgs;
     prefix = ["nodes" "${config.node.name}-${guestName}" "config"];
     system = null;
