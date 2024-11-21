@@ -1,8 +1,6 @@
 guestName: guestCfg: {
-  config,
   inputs,
   lib,
-  pkgs,
   ...
 }: let
   inherit
@@ -34,6 +32,9 @@ in {
 
       # Give them some juice by default
       mem = mkDefault (1024 + 2048);
+      # This causes QEMU rebuilds which would remove 200MB from the closure but
+      # recompiling QEMU every deploy is worse.
+      optimize.enable = false;
 
       # Add a writable store overlay, but since this is always ephemeral
       # disable any store optimization from nix.
