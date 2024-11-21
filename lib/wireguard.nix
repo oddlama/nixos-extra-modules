@@ -233,7 +233,7 @@ in {
             This will siginificantly increase evaluation times. Please consider pre-evaluating
             this information by exposing it in your flake:
 
-              wireguardEvalCache.${wgName} = lib.wireguard.createEvalCache inputs [
+              wireguardEvalCache = lib.wireguard.createEvalCache inputs [
                 "${wgName}"
                 # all other networks
               ];
