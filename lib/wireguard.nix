@@ -16,6 +16,7 @@ inputs: final: prev: let
     nameValuePair
     partition
     removeSuffix
+    warn
     ;
 
   inherit
@@ -32,8 +33,8 @@ inputs: final: prev: let
 in {
   lib =
     prev.lib
-    // {
-      wireguard = userInputs: wgName: let
+    // rec {
+      wireguard.evaluateNetwork = userInputs: wgName: let
         inherit (userInputs.self) nodes;
         # Returns the given node's wireguard configuration of this network
         wgCfgOf = node: nodes.${node}.config.wireguard.${wgName};
@@ -220,5 +221,24 @@ in {
           wgQuickConfigScript
           ;
       };
+
+      wireguard.createEvalCache = userInputs: wgNames:
+        genAttrs wgNames (wireguard.evaluateNetwork userInputs);
+
+      wireguard.getNetwork = userInputs: wgName:
+        userInputs.self.wireguardEvalCache.${wgName}
+        or (
+          warn ''
+            The calculated information for the wireguard network "${wgName}" is not cached!
+            This will siginificantly increase evaluation times. Please consider pre-evaluating
+            this information by exposing it in your flake:
+
+              wireguardEvalCache.${wgName} = lib.wireguard.createEvalCache inputs [
+                "${wgName}"
+                # all other networks
+              ];
+
+          '' (wireguard.evaluateNetwork userInputs wgName)
+        );
     };
 }

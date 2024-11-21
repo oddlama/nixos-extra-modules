@@ -28,7 +28,6 @@
     optionals
     stringLength
     types
-    wireguard
     ;
 
   cfg = config.wireguard;
@@ -36,7 +35,7 @@
 
   configForNetwork = wgName: wgCfg: let
     inherit
-      (wireguard inputs wgName)
+      (lib.wireguard.getNetwork inputs wgName)
       externalPeerName
       externalPeerNamesRaw
       networkCidrs
@@ -385,7 +384,7 @@ in {
 
         ipv4 = mkOption {
           type = types.lazyOf types.net.ipv4;
-          default = types.lazyValue (wireguard inputs name).assignedIpv4Addresses.${nodeName};
+          default = types.lazyValue (lib.wireguard.getNetwork inputs name).assignedIpv4Addresses.${nodeName};
           description = ''
             The ipv4 address for this machine. If you do not set this explicitly,
             a semi-stable ipv4 address will be derived automatically based on the
@@ -397,7 +396,7 @@ in {
 
         ipv6 = mkOption {
           type = types.lazyOf types.net.ipv6;
-          default = types.lazyValue (wireguard inputs name).assignedIpv6Addresses.${nodeName};
+          default = types.lazyValue (lib.wireguard.getNetwork inputs name).assignedIpv6Addresses.${nodeName};
           description = ''
             The ipv6 address for this machine. If you do not set this explicitly,
             a semi-stable ipv6 address will be derived automatically based on the

@@ -30,7 +30,7 @@ in {
     topology.networks = mkMerge (
       flip mapAttrsToList config.wireguard (
         wgName: _: let
-          inherit (lib.wireguard inputs wgName) networkCidrs;
+          inherit (lib.wireguard.getNetwork inputs wgName) networkCidrs;
         in {
           ${networkId wgName} = {
             name = mkDefault "Wireguard network '${wgName}'";
@@ -47,7 +47,7 @@ in {
       flip mapAttrsToList config.wireguard (
         wgName: wgCfg: let
           inherit
-            (lib.wireguard inputs wgName)
+            (lib.wireguard.getNetwork inputs wgName)
             participatingServerNodes
             wgCfgOf
             ;
