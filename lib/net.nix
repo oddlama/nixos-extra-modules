@@ -32,7 +32,7 @@ inputs: _final: prev: let
   # https://gist.github.com/duairc/5c9bb3c922e5d501a1edb9e7b3b845ba
   # Plus some extensions by us
   libNet =
-    (import "${inputs.lib-net}/net.nix" {
+    (import ./libnet.nix {
       inherit (inputs.nixpkgs) lib;
     })
     .lib
