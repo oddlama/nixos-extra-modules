@@ -112,7 +112,7 @@ in {
           (n:
             filter (x: !types.isLazyValue x)
             (concatLists
-              (nodes.${n}.options.wireguard.type.functor.wrapped.getSubOptions (wgCfgOf n)).addresses.definitions))
+              (nodes.${n}.options.wireguard.type.nestedTypes.elemType.getSubOptions (wgCfgOf n)).addresses.definitions))
           ++ flatten (concatMap (n: attrValues (wgCfgOf n).server.externalPeers) participatingNodes);
 
         # The cidrv4 and cidrv6 of the network spanned by all participating peer addresses.
