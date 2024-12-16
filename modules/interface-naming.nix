@@ -22,7 +22,7 @@
     name = "interface-names-udev-rules";
     text = concatStringsSep "\n" (
       flip mapAttrsToList cfg
-      (name: mac: ''SUBSYSTEM=="net", ACTION=="add", ATTR{address}=="${mac}", NAME:="${name}"'')
+      (name: mac: ''SUBSYSTEM=="net", ACTION=="add", ATTR{address}=="${mac}", ATTR{addr_assign_type}=="0", NAME:="${name}"'')
     );
     destination = "/etc/udev/rules.d/01-interface-names.rules";
   };
