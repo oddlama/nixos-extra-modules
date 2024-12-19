@@ -5,10 +5,13 @@ guestName: guestCfg: {
 }: let
   inherit
     (lib)
+    concatMapAttrs
     flip
+    mapAttrs
     mapAttrsToList
     mkDefault
     mkForce
+    replaceStrings
     ;
 in {
   specialArgs = guestCfg.extraSpecialArgs;
@@ -19,13 +22,15 @@ in {
       guestCfg.modules
       ++ [
         (import ./common-guest-config.nix guestName guestCfg)
-        ({config, ...}: {
-          # Set early hostname too, so we can associate those logs to this host and don't get "localhost" entries in loki
-          boot.kernelParams = ["systemd.hostname=${config.networking.hostName}"];
-        })
+        (
+          {config, ...}: {
+            # Set early hostname too, so we can associate those logs to this host and don't get "localhost" entries in loki
+            boot.kernelParams = ["systemd.hostname=${config.networking.hostName}"];
+          }
+        )
       ];
 
-    lib.microvm.mac = guestCfg.microvm.mac;
+    lib.microvm.interfaces = guestCfg.microvm.interfaces;
 
     microvm = {
       hypervisor = mkDefault "qemu";
@@ -41,17 +46,17 @@ in {
       writableStoreOverlay = "/nix/.rw-store";
 
       # MACVTAP bridge to the host's network
-      interfaces = [
-        {
+      interfaces = flip mapAttrsToList guestCfg.microvm.interfaces (
+        interface: {mac, ...}: {
           type = "macvtap";
-          id = "vm-${guestName}";
-          inherit (guestCfg.microvm) mac;
+          id = "vm-${replaceStrings [":"] [""] mac}";
+          inherit mac;
           macvtap = {
-            link = guestCfg.microvm.macvtap;
+            link = interface;
             mode = "bridge";
           };
         }
-      ];
+      );
 
       shares =
         [
@@ -73,9 +78,13 @@ in {
         );
     };
 
-    networking.renameInterfacesByMac.${guestCfg.networking.mainLinkName} = guestCfg.microvm.mac;
-    systemd.network.networks."10-${guestCfg.networking.mainLinkName}".matchConfig = mkForce {
-      MACAddress = guestCfg.microvm.mac;
-    };
+    networking.renameInterfacesByMac = flip mapAttrs guestCfg.microvm.interfaces (_: {mac, ...}: mac);
+    systemd.network.networks = flip concatMapAttrs guestCfg.microvm.interfaces (
+      name: {mac, ...}: {
+        "10-${name}".matchConfig = mkForce {
+          MACAddress = mac;
+        };
+      }
+    );
   };
 }

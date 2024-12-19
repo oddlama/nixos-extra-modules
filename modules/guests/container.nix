@@ -12,10 +12,10 @@ guestName: guestCfg: {
     nameValuePair
     ;
 in {
+  inherit (guestCfg.container) macvlans;
   ephemeral = true;
   privateNetwork = true;
   autoStart = guestCfg.autostart;
-  macvlans = ["${guestCfg.container.macvlan}:${guestCfg.networking.mainLinkName}"];
   extraFlags = [
     "--uuid=${builtins.substring 0 32 (builtins.hashString "sha256" guestName)}"
   ];
@@ -28,7 +28,11 @@ in {
   );
   nixosConfiguration = (import "${inputs.nixpkgs}/nixos/lib/eval-config.nix") {
     specialArgs = guestCfg.extraSpecialArgs;
-    prefix = ["nodes" "${config.node.name}-${guestName}" "config"];
+    prefix = [
+      "nodes"
+      "${config.node.name}-${guestName}"
+      "config"
+    ];
     system = null;
     modules =
       [
@@ -49,13 +53,15 @@ in {
           # and not recursive. This allows us to have a fileSystems entry for each
           # bindMount which other stuff can depend upon (impermanence adds dependencies
           # to the state fs).
-          fileSystems = flip mapAttrs' guestCfg.zfs (_: zfsCfg:
-            nameValuePair zfsCfg.guestMountpoint {
-              neededForBoot = true;
-              fsType = "none";
-              device = zfsCfg.guestMountpoint;
-              options = ["bind"];
-            });
+          fileSystems = flip mapAttrs' guestCfg.zfs (
+            _: zfsCfg:
+              nameValuePair zfsCfg.guestMountpoint {
+                neededForBoot = true;
+                fsType = "none";
+                device = zfsCfg.guestMountpoint;
+                options = ["bind"];
+              }
+          );
         }
         (import ./common-guest-config.nix guestName guestCfg)
       ]

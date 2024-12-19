@@ -1,5 +1,11 @@
 _guestName: guestCfg: {lib, ...}: let
-  inherit (lib) mkForce;
+  inherit
+    (lib)
+    mkForce
+    nameValuePair
+    listToAttrs
+    flip
+    ;
 in {
   node.name = guestCfg.nodeName;
   node.type = guestCfg.backend;
@@ -11,18 +17,23 @@ in {
   };
   documentation.enable = mkForce false;
 
-  systemd.network.networks."10-${guestCfg.networking.mainLinkName}" = {
-    matchConfig.Name = guestCfg.networking.mainLinkName;
-    DHCP = "yes";
-    # XXX: Do we really want this?
-    dhcpV4Config.UseDNS = false;
-    dhcpV6Config.UseDNS = false;
-    ipv6AcceptRAConfig.UseDNS = false;
-    networkConfig = {
-      IPv6PrivacyExtensions = "yes";
-      MulticastDNS = true;
-      IPv6AcceptRA = true;
-    };
-    linkConfig.RequiredForOnline = "routable";
-  };
+  systemd.network.networks = listToAttrs (
+    flip map guestCfg.networking.links (
+      name:
+        nameValuePair "10-${name}" {
+          matchConfig.Name = name;
+          DHCP = "yes";
+          # XXX: Do we really want this?
+          dhcpV4Config.UseDNS = false;
+          dhcpV6Config.UseDNS = false;
+          ipv6AcceptRAConfig.UseDNS = false;
+          networkConfig = {
+            IPv6PrivacyExtensions = "yes";
+            MulticastDNS = true;
+            IPv6AcceptRA = true;
+          };
+          linkConfig.RequiredForOnline = "routable";
+        }
+    )
+  );
 }
