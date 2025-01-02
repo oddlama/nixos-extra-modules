@@ -202,20 +202,28 @@ in {
               description = "An attrset correlating the host interface to which the microvm should be attached via macvtap, with its mac address";
               type = types.attrsOf (
                 types.submodule (submod-iface: {
-                  options.mac = mkOption {
-                    type = types.net.mac;
-                    description = "The MAC address for the guest's macvtap interface";
-                    default = let
-                      base = "02:${lib.substring 3 5 submod.config.microvm.baseMac}:00:00:00";
-                    in
-                      (net.mac.assignMacs base 24 [] (
-                        flatten (
-                          flip mapAttrsToList config.guests (
-                            name: value: forEach (attrNames value.microvm.interfaces) (iface: "${name}-${iface}")
+                  options = {
+                    hostLink = mkOption {
+                      type = types.str;
+                      description = "The name of the host side link to which this interface will bind.";
+                      default = submod-iface.config._module.args.name;
+                      example = "lan";
+                    };
+                    mac = mkOption {
+                      type = types.net.mac;
+                      description = "The MAC address for the guest's macvtap interface";
+                      default = let
+                        base = "02:${lib.substring 3 5 submod.config.microvm.baseMac}:00:00:00";
+                      in
+                        (net.mac.assignMacs base 24 [] (
+                          flatten (
+                            flip mapAttrsToList config.guests (
+                              name: value: forEach (attrNames value.microvm.interfaces) (iface: "${name}-${iface}")
+                            )
                           )
-                        )
-                      ))
-                      ."${submod.config._module.args.name}-${submod-iface.config._module.args.name}";
+                        ))
+                        ."${submod.config._module.args.name}-${submod-iface.config._module.args.name}";
+                    };
                   };
                 })
               );

@@ -47,12 +47,16 @@ in {
 
       # MACVTAP bridge to the host's network
       interfaces = flip mapAttrsToList guestCfg.microvm.interfaces (
-        interface: {mac, ...}: {
+        _: {
+          mac,
+          hostLink,
+          ...
+        }: {
           type = "macvtap";
           id = "vm-${replaceStrings [":"] [""] mac}";
           inherit mac;
           macvtap = {
-            link = interface;
+            link = hostLink;
             mode = "bridge";
           };
         }
