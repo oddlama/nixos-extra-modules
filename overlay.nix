@@ -2,17 +2,20 @@ inputs: final: prev:
 prev.lib.composeManyExtensions (
   # Order is important to allow using prev instead of final in more places to
   # speed up evaluation.
-  map (x: import x inputs) [
+  (map (x: import x inputs) [
     # No dependencies
-    ./types.nix
+    ./lib/types.nix
     # No dependencies
-    ./misc.nix
+    ./lib/misc.nix
     # No dependencies
-    ./disko.nix
+    ./lib/disko.nix
     # Requires misc
-    ./net.nix
+    ./lib/net.nix
     # Requires misc, types
-    ./wireguard.nix
+    ./lib/wireguard.nix
+  ])
+  ++ [
+    (import ./pkgs)
   ]
 )
 final

@@ -19,7 +19,6 @@
     pre-commit-hooks = {
       url = "github:cachix/pre-commit-hooks.nix";
       inputs.nixpkgs.follows = "nixpkgs";
-      inputs.flake-utils.follows = "flake-utils";
     };
   };
 
@@ -36,7 +35,7 @@
       nixosModules.default = self.nixosModules.nixos-extra-modules;
       homeManagerModules.nixos-extra-modules = import ./hm-modules;
       homeManagerModules.default = self.homeManagerModules.nixos-extra-modules;
-      overlays.nixos-extra-modules = import ./lib inputs;
+      overlays.nixos-extra-modules = import ./overlay.nix inputs;
       overlays.default = self.overlays.nixos-extra-modules;
     }
     // flake-utils.lib.eachDefaultSystem (system: rec {
@@ -44,6 +43,7 @@
         inherit system;
         overlays = [
           devshell.overlays.default
+          self.overlays.default
         ];
       };
 
