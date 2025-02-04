@@ -2,13 +2,10 @@
   lib ? null,
   ...
 }:
-
 let
-
   net =
     {
       ip = {
-
         # add :: (ip | mac | integer) -> ip -> ip
         #
         # Examples:
@@ -96,7 +93,6 @@ let
       };
 
       mac = {
-
         # add :: (ip | mac | integer) -> mac -> mac
         #
         # Examples:
@@ -334,7 +330,6 @@ let
             cidr' = typechecks.cidr function "cidr" cidr;
           in
           builders.cidr (implementations.cidr.subnet length' netnum' cidr');
-
       };
     }
     // (
@@ -344,7 +339,6 @@ let
         {
           types =
             let
-
               mkParsedOptionType =
                 {
                   name,
@@ -385,10 +379,8 @@ let
                 // {
                   description = type.description + " in ${builtins.concatStringsSep " or " cidrs}";
                 };
-
             in
             rec {
-
               ip = mkParsedOptionType {
                 name = "ip";
                 description = "IPv4 or IPv6 address";
@@ -449,7 +441,6 @@ let
                 parser = parsers.mac;
                 builder = builders.mac;
               };
-
             };
         }
     );
@@ -460,20 +451,23 @@ let
 
   bit =
     let
-      shift =
-        n: x:
-        if n < 0 then
-          x * math.pow 2 (-n)
+      left =
+        a: b:
+        if a >= 64 then
+          0
+        else if a < 0 then
+          right (-a) b
         else
-          let
-            safeDiv = n: d: if d == 0 then 0 else n / d;
-            d = math.pow 2 n;
-          in
-          if x < 0 then not (safeDiv (not x) d) else safeDiv x d;
+          builtins.bitShiftLeft b a;
 
-      left = n: shift (-n);
-
-      right = shift;
+      right =
+        a: b:
+        if a >= 64 then
+          0
+        else if a < 0 then
+          left (-a) b
+        else
+          builtins.bitShiftRight b a;
 
       and = builtins.bitAnd;
 
@@ -505,20 +499,10 @@ let
     clamp =
       a: b: c:
       max a (min b c);
-
-    pow =
-      x: n:
-      if n == 0 then
-        1
-      else if bit.and n 1 != 0 then
-        x * pow (x * x) ((n - 1) / 2)
-      else
-        pow (x * x) (n / 2);
   };
 
   parsers =
     let
-
       # fmap :: (a -> b) -> parser a -> parser b
       fmap = f: ma: bind ma (a: pure (f a));
 
@@ -766,7 +750,6 @@ let
           afterDoubleColon = alt ipv4' (
             liftA2 list.cons hextet (alt (then_ colon afterDoubleColon) (pure [ ]))
           );
-
         in
         bind (alt (then_ (string "::") (doubleColon 0)) (part 0)) fromHextets;
 
@@ -791,7 +774,6 @@ let
           };
         in
         liftA6 fromOctets octet octet' octet' octet' octet' octet';
-
     in
     {
       ipv4 = run ipv4;
@@ -806,7 +788,6 @@ let
 
   builders =
     let
-
       ipv4 =
         address:
         let
@@ -832,7 +813,6 @@ let
       ipv6 =
         address:
         let
-
           digits = "0123456789abcdef";
 
           toHexString =
@@ -843,7 +823,6 @@ let
               prefix = if rest == 0 then "" else toHexString rest;
             in
             "${prefix}${builtins.substring current 1 digits}";
-
         in
         if (with address.ipv6; a == 0 && b == 0 && c == 0 && d > 65535) then
           "::${ipv4 { ipv4 = address.ipv6.d; }}"
@@ -851,7 +830,6 @@ let
           "::ffff:${ipv4 { ipv4 = address.ipv6.d; }}"
         else
           let
-
             a = bit.right 16 address.ipv6.a;
             b = bit.mask 16 address.ipv6.a;
             c = bit.right 16 address.ipv6.b;
@@ -961,7 +939,6 @@ let
           f = bit.mask 8 (bit.right 0 address.mac);
         in
         "${octet a}:${octet b}:${octet c}:${octet d}:${octet e}:${octet f}";
-
     in
     {
       inherit
@@ -1096,7 +1073,7 @@ let
     diff =
       a: b:
       let
-        toIPv6 = coerce ({ ipv6.a = 0; });
+        toIPv6 = coerce { ipv6.a = 0; };
         result = (subtract b (toIPv6 a)).ipv6;
         max32 = bit.left 32 1 - 1;
       in
@@ -1352,7 +1329,6 @@ let
 
   typechecks =
     let
-
       fail =
         description: function: argument:
         builtins.throw "${function}: ${argument} parameter must be ${description}";
@@ -1369,7 +1345,6 @@ let
             result = parser input;
           in
           if builtins.isNull result then error else result;
-
     in
     {
       int =
@@ -1385,11 +1360,16 @@ let
         else
           meta parsers.numeric "an integer or IPv4, IPv6 or MAC address" function argument input;
     };
-
 in
-
 {
   lib = {
-    inherit net;
+    inherit
+      arithmetic
+      net
+      typechecks
+      parsers
+      implementations
+      bit
+      ;
   };
 }

@@ -75,26 +75,13 @@
         "type": "github"
       }
     },
-    "lib-net": {
-      "flake": false,
-      "locked": {
-        "lastModified": 1596309860,
-        "narHash": "sha256-izAzepR/6cDvnRfaa2ceSolMLMwqzQB5x9q62aR5J2g=",
-        "type": "tarball",
-        "url": "https://gist.github.com/duairc/5c9bb3c922e5d501a1edb9e7b3b845ba/archive/3885f7cd9ed0a746a9d675da6f265d41e9fd6704.tar.gz"
-      },
-      "original": {
-        "type": "tarball",
-        "url": "https://gist.github.com/duairc/5c9bb3c922e5d501a1edb9e7b3b845ba/archive/3885f7cd9ed0a746a9d675da6f265d41e9fd6704.tar.gz"
-      }
-    },
     "nixpkgs": {
       "locked": {
-        "lastModified": 1737885589,
-        "narHash": "sha256-Zf0hSrtzaM1DEz8//+Xs51k/wdSajticVrATqDrfQjg=",
+        "lastModified": 1739214665,
+        "narHash": "sha256-26L8VAu3/1YRxS8MHgBOyOM8xALdo6N0I04PgorE7UM=",
         "owner": "NixOS",
         "repo": "nixpkgs",
-        "rev": "852ff1d9e153d8875a83602e03fdef8a63f0ecf8",
+        "rev": "64e75cd44acf21c7933d61d7721e812eac1b5a0a",
         "type": "github"
       },
       "original": {
@@ -142,7 +129,6 @@
       "inputs": {
         "devshell": "devshell",
         "flake-parts": "flake-parts",
-        "lib-net": "lib-net",
         "nixpkgs": "nixpkgs",
         "pre-commit-hooks": "pre-commit-hooks"
       }
