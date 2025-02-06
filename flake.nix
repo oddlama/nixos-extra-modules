@@ -35,6 +35,10 @@
       ];
 
       flake.modules = {
+        flake = {
+          nixos-extra-modules = import ./flake-modules;
+          default = self.modules.flake.nixos-extra-modules;
+        };
         nixos = {
           nixos-extra-modules = import ./modules;
           default = self.modules.nixos.nixos-extra-modules;

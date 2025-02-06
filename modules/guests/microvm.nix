@@ -1,10 +1,12 @@
-guestName: guestCfg: {
+guestName: guestCfg:
+{
   inputs,
   lib,
+  extraModules,
   ...
-}: let
-  inherit
-    (lib)
+}:
+let
+  inherit (lib)
     concatMapAttrs
     flip
     mapAttrs
@@ -13,19 +15,22 @@ guestName: guestCfg: {
     mkForce
     replaceStrings
     ;
-in {
+in
+{
   specialArgs = guestCfg.extraSpecialArgs;
   pkgs = inputs.self.pkgs.${guestCfg.microvm.system};
   inherit (guestCfg) autostart;
   config = {
     imports =
-      guestCfg.modules
+      extraModules
+      ++ guestCfg.modules
       ++ [
         (import ./common-guest-config.nix guestName guestCfg)
         (
-          {config, ...}: {
+          { config, ... }:
+          {
             # Set early hostname too, so we can associate those logs to this host and don't get "localhost" entries in loki
-            boot.kernelParams = ["systemd.hostname=${config.networking.hostName}"];
+            boot.kernelParams = [ "systemd.hostname=${config.networking.hostName}" ];
           }
         )
       ];
@@ -47,13 +52,15 @@ in {
 
       # MACVTAP bridge to the host's network
       interfaces = flip mapAttrsToList guestCfg.microvm.interfaces (
-        _: {
+        _:
+        {
           mac,
           hostLink,
           ...
-        }: {
+        }:
+        {
           type = "macvtap";
-          id = "vm-${replaceStrings [":"] [""] mac}";
+          id = "vm-${replaceStrings [ ":" ] [ "" ] mac}";
           inherit mac;
           macvtap = {
             link = hostLink;
@@ -82,9 +89,11 @@ in {
         );
     };
 
-    networking.renameInterfacesByMac = flip mapAttrs guestCfg.microvm.interfaces (_: {mac, ...}: mac);
+    networking.renameInterfacesByMac = flip mapAttrs guestCfg.microvm.interfaces (_: { mac, ... }: mac);
     systemd.network.networks = flip concatMapAttrs guestCfg.microvm.interfaces (
-      name: {mac, ...}: {
+      name:
+      { mac, ... }:
+      {
         "10-${name}".matchConfig = mkForce {
           MACAddress = mac;
         };

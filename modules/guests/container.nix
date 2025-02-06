@@ -1,17 +1,20 @@
-guestName: guestCfg: {
+guestName: guestCfg:
+{
   config,
   inputs,
   lib,
   pkgs,
+  extraModules,
   ...
-}: let
-  inherit
-    (lib)
+}:
+let
+  inherit (lib)
     flip
     mapAttrs'
     nameValuePair
     ;
-in {
+in
+{
   inherit (guestCfg.container) macvlans;
   ephemeral = true;
   privateNetwork = true;
@@ -21,10 +24,10 @@ in {
   ];
   bindMounts = flip mapAttrs' guestCfg.zfs (
     _: zfsCfg:
-      nameValuePair zfsCfg.guestMountpoint {
-        hostPath = zfsCfg.hostMountpoint;
-        isReadOnly = false;
-      }
+    nameValuePair zfsCfg.guestMountpoint {
+      hostPath = zfsCfg.hostMountpoint;
+      isReadOnly = false;
+    }
   );
   nixosConfiguration = (import "${inputs.nixpkgs}/nixos/lib/eval-config.nix") {
     specialArgs = guestCfg.extraSpecialArgs;
@@ -55,16 +58,17 @@ in {
           # to the state fs).
           fileSystems = flip mapAttrs' guestCfg.zfs (
             _: zfsCfg:
-              nameValuePair zfsCfg.guestMountpoint {
-                neededForBoot = true;
-                fsType = "none";
-                device = zfsCfg.guestMountpoint;
-                options = ["bind"];
-              }
+            nameValuePair zfsCfg.guestMountpoint {
+              neededForBoot = true;
+              fsType = "none";
+              device = zfsCfg.guestMountpoint;
+              options = [ "bind" ];
+            }
           );
         }
         (import ./common-guest-config.nix guestName guestCfg)
       ]
-      ++ guestCfg.modules;
+      ++ guestCfg.modules
+      ++ extraModules;
   };
 }
