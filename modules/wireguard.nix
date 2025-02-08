@@ -2,456 +2,278 @@
   config,
   inputs,
   lib,
+  globals,
   ...
-}: let
-  inherit
-    (lib)
+}:
+let
+  inherit (lib)
     any
-    concatAttrs
-    concatMap
-    concatStringsSep
-    duplicates
-    filter
+    attrNames
+    concatMapAttrs
+    count
+    mkMerge
+    filterAttrs
     flip
-    head
-    listToAttrs
+    mapAttrs'
     mapAttrsToList
-    mergeToplevelConfigs
     mkIf
-    mkOption
     nameValuePair
+    attrValues
     net
+    optional
     optionalAttrs
-    optionals
     stringLength
-    types
+    concatLists
     ;
 
-  cfg = config.wireguard;
-  nodeName = config.node.name;
+  memberWG = filterAttrs (
+    _: cfg: any (x: x == config.node.name) (attrNames cfg.hosts)
+  ) globals.wireguard;
+in
 
-  configForNetwork = wgName: wgCfg: let
-    inherit
-      (lib.wireguard.getNetwork inputs wgName)
-      networkCidrs
-      participatingClientNodes
-      participatingNodes
-      participatingServerNodes
-      peerPresharedKeyPath
-      peerPresharedKeySecret
-      peerPrivateKeyPath
-      peerPrivateKeySecret
-      peerPublicKeyPath
-      toNetworkAddr
-      usedAddresses
-      wgCfgOf
-      ;
-
-    isServer = wgCfg.server.host != null;
-    isClient = wgCfg.client.via != null;
-    filterSelf = filter (x: x != nodeName);
-
-    # All nodes that use our node as the via into the wireguard network
-    ourClientNodes = optionals isServer (
-      filter (n: (wgCfgOf n).client.via == nodeName) participatingClientNodes
-    );
-
-    # The list of peers for which we have to know the psk.
-    neededPeers =
-      if isServer
-      then
-        # Other servers in the same network
-        filterSelf participatingServerNodes
-        # Our clients
-        ++ ourClientNodes
-      else [wgCfg.client.via];
-
-    # Figure out if there are duplicate addresses so we can make an assertion later.
-    duplicateAddrs = duplicates usedAddresses;
-
-    # Adds context information to the assertions for this network
-    assertionPrefix = "Wireguard network '${wgName}' on '${nodeName}'";
-
-    # Calculates the allowed ips for another server from our perspective.
-    # Usually we just want to allow other peers to route traffic
-    # for our "children" through us, additional to traffic to us of course.
-    # If a server exposes additional network access (global, lan, ...),
-    # these can be added aswell.
-    # TODO (do that)
-    serverAllowedIPs = serverNode: let
-      snCfg = wgCfgOf serverNode;
-    in
-      map (net.cidr.make 128) (
-        # The server accepts traffic to it's own address
-        snCfg.addresses
-        # plus traffic for any client that is connected via that server
-        ++ concatMap (n: (wgCfgOf n).addresses) (
-          filter (n: (wgCfgOf n).client.via == serverNode) participatingClientNodes
-        )
-      );
-  in {
-    assertions = [
-      {
-        assertion = any (n: (wgCfgOf n).server.host != null) participatingNodes;
-        message = "${assertionPrefix}: At least one node in a network must be a server.";
-      }
-      {
-        assertion = duplicateAddrs == [];
-        message = "${assertionPrefix}: Addresses used multiple times: ${concatStringsSep ", " duplicateAddrs}";
-      }
-      {
-        assertion = isServer != isClient;
-        message = "${assertionPrefix}: A node must either be a server (define server.host) or a client (define client.via).";
-      }
-      {
-        assertion = isClient -> ((wgCfgOf wgCfg.client.via).server.host != null);
-        message = "${assertionPrefix}: The specified via node '${wgCfg.client.via}' must be a wireguard server.";
-      }
-      {
-        assertion = stringLength wgCfg.linkName < 16;
-        message = "${assertionPrefix}: The specified linkName '${wgCfg.linkName}' is too long (must be max 15 characters).";
-      }
-    ];
-
-    # Open the udp port for the wireguard endpoint in the firewall
-    networking.firewall.allowedUDPPorts = mkIf (isServer && wgCfg.server.openFirewall) [
-      wgCfg.server.port
-    ];
-
-    # If requested, create firewall rules for the network / specific participants and open ports.
-    networking.nftables.firewall = let
-      inherit (config.networking.nftables.firewall) localZoneName;
-    in {
-      zones =
+{
+  assertions = concatLists (
+    flip mapAttrsToList memberWG (
+      networkName: networkCfg:
+      let
+        assertionPrefix = "While evaluation the wireguard network ${networkName}:";
+        hostCfg = networkCfg.hosts.${config.node.name};
+      in
+      [
         {
-          # Parent zone for the whole interface
-          "wg-${wgCfg.linkName}".interfaces = [wgCfg.linkName];
+          assertion = networkCfg.cidrv4 != null || networkCfg.cidrv6 != null;
+          message = "${assertionPrefix}: At least one of cidrv4 or cidrv6 has to be set.";
         }
-        // listToAttrs (
-          flip map participatingNodes (
-            peer: let
-              peerCfg = wgCfgOf peer;
-            in
-              # Subzone to specifically target the peer
-              nameValuePair "wg-${wgCfg.linkName}-node-${peer}" {
-                parent = "wg-${wgCfg.linkName}";
-                ipv4Addresses = [peerCfg.ipv4];
-                ipv6Addresses = [peerCfg.ipv6];
-              }
-          )
-        );
-
-      rules =
         {
-          # Open ports for whole network
-          "wg-${wgCfg.linkName}-to-${localZoneName}" = {
-            from = ["wg-${wgCfg.linkName}"];
-            to = [localZoneName];
+          assertion = (count (x: x.server) (attrValues networkCfg.hosts)) == 1;
+          message = "${assertionPrefix}: You have to declare exactly 1 server node.";
+        }
+        {
+          assertion = (count (x: x.id == hostCfg.id) (attrValues networkCfg.hosts)) == 1;
+          message = "${assertionPrefix}: More than one host with id ${toString hostCfg.id}";
+        }
+        {
+          assertion = stringLength hostCfg.linkName < 16;
+          message = "${assertionPrefix}: The specified linkName '${hostCfg.linkName}' is too long (must be max 15 characters).";
+        }
+      ]
+    )
+  );
+  networking.firewall.allowedUDPPorts = mkMerge (
+    flip mapAttrsToList memberWG (
+      _: networkCfg:
+      let
+        hostCfg = networkCfg.hosts.${config.node.name};
+      in
+      optional (hostCfg.server && networkCfg.openFirewall) networkCfg.port
+    )
+  );
+  networking.nftables.firewall.zones = mkMerge (
+    flip mapAttrsToList memberWG (
+      _: networkCfg:
+      let
+        hostCfg = networkCfg.hosts.${config.node.name};
+        peers = filterAttrs (name: _: name != config.node.name) networkCfg.hosts;
+      in
+      {
+        # Parent zone for the whole network
+        "wg-${hostCfg.linkName}".interfaces = [ hostCfg.linkName ];
+      }
+      // (flip mapAttrs' peers (
+        name: cfg:
+        nameValuePair "wg-${hostCfg.linkName}-node-${name}" {
+          parent = "wg-${hostCfg.linkName}";
+          ipv4Addresses = optional (cfg.ipv4 != null) cfg.ipv4;
+          ipv6Addresses = optional (cfg.ipv6 != null) cfg.ipv6;
+        }
+      ))
+    )
+  );
+  networking.nftables.firewall.rules = mkMerge (
+    flip mapAttrsToList memberWG (
+      _: networkCfg:
+      let
+        inherit (config.networking.nftables.firewall) localZoneName;
+        hostCfg = networkCfg.hosts.${config.node.name};
+        peers = filterAttrs (name: _: name != config.node.name) networkCfg.hosts;
+      in
+      {
+        "wg-${hostCfg.linkName}-to-${localZoneName}" = {
+          from = [ "wg-${hostCfg.linkName}" ];
+          to = [ localZoneName ];
+          ignoreEmptyRule = true;
+
+          inherit (hostCfg.firewallRuleForAll)
+            allowedTCPPorts
+            allowedUDPPorts
+            ;
+        };
+      }
+      // (flip mapAttrs' peers (
+        name: _:
+        nameValuePair "wg-${hostCfg.linkName}-node-${name}-to-${localZoneName}" (
+          mkIf (hostCfg.firewallRuleForNode ? ${name}) {
+            from = [ "wg-${hostCfg.linkName}-node-${name}" ];
+            to = [ localZoneName ];
             ignoreEmptyRule = true;
 
-            inherit
-              (wgCfg.firewallRuleForAll)
+            inherit (hostCfg.firewallRuleForNode.${name})
               allowedTCPPorts
               allowedUDPPorts
               ;
-          };
-        }
-        # Open ports for specific nodes network
-        // listToAttrs (
-          flip map participatingNodes (
-            peer:
-              nameValuePair "wg-${wgCfg.linkName}-node-${peer}-to-${localZoneName}" (
-                mkIf (wgCfg.firewallRuleForNode ? ${peer}) {
-                  from = ["wg-${wgCfg.linkName}-node-${peer}"];
-                  to = [localZoneName];
-                  ignoreEmptyRule = true;
 
-                  inherit
-                    (wgCfg.firewallRuleForNode.${peer})
-                    allowedTCPPorts
-                    allowedUDPPorts
-                    ;
-                }
-              )
-          )
-        );
-    };
-
-    age.secrets =
-      concatAttrs (
-        map (other: {
-          ${peerPresharedKeySecret nodeName other} = {
-            rekeyFile = peerPresharedKeyPath nodeName other;
-            owner = "systemd-network";
-            generator.script = {pkgs, ...}: "${pkgs.wireguard-tools}/bin/wg genpsk";
+          }
+        )
+      ))
+    )
+  );
+  age.secrets = flip concatMapAttrs memberWG (
+    networkName: networkCfg:
+    let
+      serverNode = filterAttrs (_: cfg: cfg.server) networkCfg.hosts;
+      connectedPeers = if hostCfg.server then peers else serverNode;
+      hostCfg = networkCfg.hosts.${config.node.name};
+      peers = filterAttrs (name: _: name != config.node.name) networkCfg.hosts;
+      sortedPeers =
+        peerA: peerB:
+        if peerA < peerB then
+          {
+            peer1 = peerA;
+            peer2 = peerB;
+          }
+        else
+          {
+            peer1 = peerB;
+            peer2 = peerA;
           };
-        })
-        neededPeers
-      )
-      // {
-        ${peerPrivateKeySecret nodeName} = {
-          rekeyFile = peerPrivateKeyPath nodeName;
-          owner = "systemd-network";
-          generator.script = {
+
+      peerPrivateKeyFile = peerName: "/secrets/wireguard/${networkName}/keys/${peerName}.age";
+      peerPrivateKeyPath = peerName: inputs.self.outPath + peerPrivateKeyFile peerName;
+      peerPrivateKeySecret = peerName: "wireguard-${networkName}-priv-${peerName}";
+      peerPresharedKeyFile =
+        peerA: peerB:
+        let
+          inherit (sortedPeers peerA peerB) peer1 peer2;
+        in
+        "/secrets/wireguard/${networkName}/psks/${peer1}+${peer2}.age";
+      peerPresharedKeyPath = peerA: peerB: inputs.self.outPath + peerPresharedKeyFile peerA peerB;
+      peerPresharedKeySecret =
+        peerA: peerB:
+        let
+          inherit (sortedPeers peerA peerB) peer1 peer2;
+        in
+        "wireguard-${networkName}-psks-${peer1}+${peer2}";
+    in
+    flip mapAttrs' connectedPeers (
+      name: _:
+      nameValuePair (peerPresharedKeySecret config.node.name name) {
+        rekeyFile = peerPresharedKeyPath config.node.name name;
+        owner = "systemd-network";
+        generator.script = { pkgs, ... }: "${pkgs.wireguard-tools}/bin/wg genpsk";
+      }
+    )
+    // {
+      ${peerPrivateKeySecret config.node.name} = {
+        rekeyFile = peerPrivateKeyPath config.node.name;
+        owner = "systemd-network";
+        generator.script =
+          {
             pkgs,
             file,
             ...
-          }: ''
+          }:
+          ''
             priv=$(${pkgs.wireguard-tools}/bin/wg genkey)
             ${pkgs.wireguard-tools}/bin/wg pubkey <<< "$priv" > ${
               lib.escapeShellArg (lib.removeSuffix ".age" file + ".pub")
             }
             echo "$priv"
           '';
-        };
       };
+    }
+  );
+  systemd.network.netdevs = flip mapAttrs' memberWG (
+    networkName: networkCfg:
+    let
+      serverNode = filterAttrs (_: cfg: cfg.server) networkCfg.hosts;
+      hostCfg = networkCfg.hosts.${config.node.name};
+      peers = filterAttrs (name: _: name != config.node.name) networkCfg.hosts;
+      sortedPeers =
+        peerA: peerB:
+        if peerA < peerB then
+          {
+            peer1 = peerA;
+            peer2 = peerB;
+          }
+        else
+          {
+            peer1 = peerB;
+            peer2 = peerA;
+          };
 
-    systemd.network.netdevs."${wgCfg.unitConfName}" = {
+      peerPublicKeyFile = peerName: "/secrets/wireguard/${networkName}/keys/${peerName}.pub";
+      peerPublicKeyPath = peerName: inputs.self.outPath + peerPublicKeyFile peerName;
+
+      peerPrivateKeySecret = peerName: "wireguard-${networkName}-priv-${peerName}";
+      peerPresharedKeySecret =
+        peerA: peerB:
+        let
+          inherit (sortedPeers peerA peerB) peer1 peer2;
+        in
+        "wireguard-${networkName}-psks-${peer1}+${peer2}";
+    in
+    nameValuePair "${hostCfg.unitConfName}" {
       netdevConfig = {
         Kind = "wireguard";
-        Name = wgCfg.linkName;
-        Description = "Wireguard network ${wgName}";
+        Name = hostCfg.linkName;
+        Description = "Wireguard network ${networkName}";
       };
       wireguardConfig =
         {
-          PrivateKeyFile = config.age.secrets.${peerPrivateKeySecret nodeName}.path;
+          PrivateKeyFile = config.age.secrets.${peerPrivateKeySecret config.node.name}.path;
         }
-        // optionalAttrs isServer {
-          ListenPort = wgCfg.server.port;
+        // optionalAttrs hostCfg.server {
+          ListenPort = networkCfg.port;
         };
       wireguardPeers =
-        if isServer
-        then
-          # Always include all other server nodes.
-          map (
-            serverNode: let
-              snCfg = wgCfgOf serverNode;
-            in {
-              PublicKey = builtins.readFile (peerPublicKeyPath serverNode);
-              PresharedKeyFile = config.age.secrets.${peerPresharedKeySecret nodeName serverNode}.path;
-              AllowedIPs = serverAllowedIPs serverNode;
-              Endpoint = "${snCfg.server.host}:${toString snCfg.server.port}";
-            }
-          ) (filterSelf participatingServerNodes)
+        if hostCfg.server then
           # All client nodes that have their via set to us.
-          ++ map (
-            clientNode: let
-              clientCfg = wgCfgOf clientNode;
-            in {
-              PublicKey = builtins.readFile (peerPublicKeyPath clientNode);
-              PresharedKeyFile = config.age.secrets.${peerPresharedKeySecret nodeName clientNode}.path;
-              AllowedIPs = map (net.cidr.make 128) clientCfg.addresses;
-            }
-          )
-          ourClientNodes
+          mapAttrsToList (clientName: clientCfg: {
+            PublicKey = builtins.readFile (peerPublicKeyPath clientName);
+            PresharedKeyFile = config.age.secrets.${peerPresharedKeySecret config.node.name clientName}.path;
+            AllowedIPs =
+              (optional (clientCfg.ipv4 != null) (net.cidr.make 32 clientCfg.ipv4))
+              ++ (optional (clientCfg.ipv6 != null) (net.cidr.make 128 clientCfg.ipv6));
+          }) peers
         else
           # We are a client node, so only include our via server.
-          [
-            (
-              let
-                snCfg = wgCfgOf wgCfg.client.via;
-              in
-                {
-                  PublicKey = builtins.readFile (peerPublicKeyPath wgCfg.client.via);
-                  PresharedKeyFile = config.age.secrets.${peerPresharedKeySecret nodeName wgCfg.client.via}.path;
-                  Endpoint = "${snCfg.server.host}:${toString snCfg.server.port}";
-                  # Access to the whole network is routed through our entry node.
-                  AllowedIPs = networkCidrs;
-                }
-                // optionalAttrs wgCfg.client.keepalive {
-                  PersistentKeepalive = 25;
-                }
-            )
-          ];
-    };
-
-    systemd.network.networks.${wgCfg.unitConfName} = {
-      matchConfig.Name = wgCfg.linkName;
-      address = map toNetworkAddr wgCfg.addresses;
-    };
-  };
-in {
-  options.wireguard = mkOption {
-    default = {};
-    description = "Configures wireguard networks via systemd-networkd.";
-    type = types.lazyAttrsOf (
-      types.submodule (
-        {
-          config,
-          name,
-          options,
-          ...
-        }: {
-          options = {
-            server = {
-              host = mkOption {
-                default = null;
-                type = types.nullOr types.str;
-                description = "The hostname or ip address which other peers can use to reach this host. No server functionality will be activated if set to null.";
-              };
-
-              port = mkOption {
-                default = 51820;
-                type = types.port;
-                description = "The port to listen on.";
-              };
-
-              openFirewall = mkOption {
-                default = false;
-                type = types.bool;
-                description = "Whether to open the firewall for the specified {option}`port`.";
-              };
-
-              reservedAddresses = mkOption {
-                type = types.listOf types.net.cidr;
-                default = [];
-                example = [
-                  "10.0.0.0/24"
-                  "fd00:cafe::/64"
-                ];
-                description = ''
-                  Allows defining extra CIDR network ranges that shall be reserved for this network.
-                  Reservation means that those address spaces will be guaranteed to be included in
-                  the spanned network, but no rules will be enforced as to who in the network may use them.
-
-                  By default, this module will try to allocate the smallest address space that includes
-                  all network peers.
-                '';
-              };
-            };
-
-            client = {
-              via = mkOption {
-                default = null;
-                type = types.nullOr types.str;
-                description = ''
-                  The server node via which to connect to the network.
-                  No client functionality will be activated if set to null.
-                '';
-              };
-
-              keepalive = mkOption {
-                default = true;
-                type = types.bool;
-                description = "Whether to keep this connection alive using PersistentKeepalive. Set to false only for networks where client and server IPs are stable.";
-              };
-            };
-
-            priority = mkOption {
-              default = 40;
-              type = types.int;
-              description = "The order priority used when creating systemd netdev and network files.";
-            };
-
-            linkName = mkOption {
-              default = name;
-              type = types.str;
-              description = "The name for the created network interface.";
-            };
-
-            unitConfName = mkOption {
-              default = "${toString config.priority}-${config.linkName}";
-              readOnly = true;
-              type = types.str;
-              description = ''
-                The name used for unit configuration files. This is a read-only option.
-                Access this if you want to add additional settings to the generated systemd units.
-              '';
-            };
-
-            ipv4 = mkOption {
-              type = types.lazyOf types.net.ipv4;
-              default = types.lazyValue (lib.wireguard.getNetwork inputs name).assignedIpv4Addresses.${nodeName};
-              description = ''
-                The ipv4 address for this machine. If you do not set this explicitly,
-                a semi-stable ipv4 address will be derived automatically based on the
-                hostname of this machine. At least one participating server must reserve
-                a big-enough space of addresses by setting `reservedAddresses`.
-                See `net.cidr.assignIps` for more information on the algorithm.
-              '';
-            };
-
-            ipv6 = mkOption {
-              type = types.lazyOf types.net.ipv6;
-              default = types.lazyValue (lib.wireguard.getNetwork inputs name).assignedIpv6Addresses.${nodeName};
-              description = ''
-                The ipv6 address for this machine. If you do not set this explicitly,
-                a semi-stable ipv6 address will be derived automatically based on the
-                hostname of this machine. At least one participating server must reserve
-                a big-enough space of addresses by setting `reservedAddresses`.
-                See `net.cidr.assignIps` for more information on the algorithm.
-              '';
-            };
-
-            addresses = mkOption {
-              type = types.listOf (types.lazyOf types.net.ip);
-              default = [
-                (head options.ipv4.definitions)
-                (head options.ipv6.definitions)
-              ];
-              description = ''
-                The ip addresses (v4 and/or v6) to use for this machine.
-                The actual network cidr will automatically be derived from all network participants.
-                By default this will just include {option}`ipv4` and {option}`ipv6` as configured.
-              '';
-            };
-
-            firewallRuleForAll = mkOption {
-              default = {};
-              description = ''
-                Allows you to set specific firewall rules for traffic originating from any participant in this
-                wireguard network. A corresponding rule `wg-<network-name>-to-<local-zone-name>` will be created to easily expose
-                services to the network.
-              '';
-              type = types.submodule {
-                options = {
-                  allowedTCPPorts = mkOption {
-                    type = types.listOf types.port;
-                    default = [];
-                    description = "Convenience option to open specific TCP ports for traffic from the network.";
-                  };
-                  allowedUDPPorts = mkOption {
-                    type = types.listOf types.port;
-                    default = [];
-                    description = "Convenience option to open specific UDP ports for traffic from the network.";
-                  };
-                };
-              };
-            };
-
-            firewallRuleForNode = mkOption {
-              default = {};
-              description = ''
-                Allows you to set specific firewall rules just for traffic originating from another network node.
-                A corresponding rule `wg-<network-name>-node-<node-name>-to-<local-zone-name>` will be created to easily expose
-                services to that node.
-              '';
-              type = types.attrsOf (
-                types.submodule {
-                  options = {
-                    allowedTCPPorts = mkOption {
-                      type = types.listOf types.port;
-                      default = [];
-                      description = "Convenience option to open specific TCP ports for traffic from another node.";
-                    };
-                    allowedUDPPorts = mkOption {
-                      type = types.listOf types.port;
-                      default = [];
-                      description = "Convenience option to open specific UDP ports for traffic from another node.";
-                    };
-                  };
-                }
-              );
-            };
-          };
-        }
-      )
-    );
-  };
-
-  config = mkIf (cfg != {}) (
-    mergeToplevelConfigs ["assertions" "age" "networking" "systemd"] (
-      mapAttrsToList configForNetwork cfg
-    )
+          mapAttrsToList (
+            serverName: _:
+            {
+              PublicKey = builtins.readFile (peerPublicKeyPath serverName);
+              PresharedKeyFile = config.age.secrets.${peerPresharedKeySecret config.node.name serverName}.path;
+              Endpoint = "${networkCfg.host}:${toString networkCfg.port}";
+              # Access to the whole network is routed through our entry node.
+              AllowedIPs =
+                (optional (networkCfg.cidrv4 != null) networkCfg.cidrv4)
+                ++ (optional (networkCfg.cidrv6 != null) networkCfg.cidrv6);
+            }
+            // optionalAttrs hostCfg.keepalive {
+              PersistentKeepalive = 25;
+            }
+          ) serverNode;
+    }
+  );
+  systemd.network.networks = flip mapAttrs' memberWG (
+    _: networkCfg:
+    let
+      hostCfg = networkCfg.hosts.${config.node.name};
+    in
+    nameValuePair hostCfg.unitConfName {
+      matchConfig.Name = hostCfg.linkName;
+      address =
+        (optional (networkCfg.cidrv4 != null) (net.cidr.hostCidr hostCfg.id networkCfg.cidrv4))
+        ++ (optional (networkCfg.cidrv6 != null) (net.cidr.hostCidr hostCfg.id networkCfg.cidrv6));
+    }
   );
 }

@@ -10,7 +10,7 @@
     ./nginx.nix
     ./node.nix
     ./restic.nix
-    ./topology-wireguard.nix
+    #./topology-wireguard.nix
     ./wireguard.nix
   ];
 

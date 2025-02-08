@@ -17,6 +17,7 @@ in
         These should not include any config only option declaration.
         Will be included in the exported nixos Modules from this flake to be included
         into the host evaluation.
+        Be aware that at most 1 of these modules can have a default
       '';
     };
     defModules = mkOption {
@@ -38,37 +39,45 @@ in
       '';
     };
   };
-  config.flake = flakeSubmod: {
-    globals =
-      let
-        globalsSystem = lib.evalModules {
-          prefix = [ "globals" ];
-          specialArgs = {
-            inherit (inputs.self.pkgs.x86_64-linux) lib;
-            inherit inputs;
-            inherit (flakeSubmod.config) nodes;
-          };
-          modules =
-            config.globals.optModules
-            ++ config.globals.defModules
-            ++ [
-              ../modules/globals.nix
-              (
-                { lib, ... }:
-                {
-                  globals = lib.mkMerge (
-                    lib.concatLists (
-                      lib.flip lib.mapAttrsToList flakeSubmod.config.nodes (
-                        name: cfg:
-                        builtins.addErrorContext "while aggregating globals from nixosConfigurations.${name} into flake-level globals:" cfg.config._globalsDefs
+  config = {
+    globals = {
+      optModules = [
+        ../modules/wireguardGlobals.nix
+      ];
+      attrkeys = [ "wireguard" ];
+    };
+    flake = flakeSubmod: {
+      globals =
+        let
+          globalsSystem = lib.evalModules {
+            prefix = [ "globals" ];
+            specialArgs = {
+              inherit (inputs.self.pkgs.x86_64-linux) lib;
+              inherit inputs;
+              inherit (flakeSubmod.config) nodes;
+            };
+            modules =
+              config.globals.optModules
+              ++ config.globals.defModules
+              ++ [
+                ../modules/globals.nix
+                (
+                  { lib, ... }:
+                  {
+                    globals = lib.mkMerge (
+                      lib.concatLists (
+                        lib.flip lib.mapAttrsToList flakeSubmod.config.nodes (
+                          name: cfg:
+                          builtins.addErrorContext "while aggregating globals from nixosConfigurations.${name} into flake-level globals:" cfg.config._globalsDefs
+                        )
                       )
-                    )
-                  );
-                }
-              )
-            ];
-        };
-      in
-      lib.genAttrs config.globals.attrkeys (x: globalsSystem.config.globals.${x});
+                    );
+                  }
+                )
+              ];
+          };
+        in
+        lib.genAttrs config.globals.attrkeys (x: globalsSystem.config.globals.${x});
+    };
   };
 }
