@@ -11,12 +11,8 @@ prev.lib.composeManyExtensions (
     ./lib/disko.nix
     # Requires misc
     ./lib/net.nix
-    # Requires misc, types
-    ./lib/wireguard.nix
   ])
   ++ [
     (import ./pkgs)
   ]
-)
-final
-prev
+) final prev
