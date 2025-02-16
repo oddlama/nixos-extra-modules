@@ -2,52 +2,57 @@
   config,
   lib,
   ...
-}: let
-  inherit
-    (lib)
+}:
+let
+  inherit (lib)
     mkBefore
     mkEnableOption
     mkIf
     mkOption
     types
     ;
-in {
+in
+{
   options.services.nginx = {
     recommendedSetup = mkEnableOption "recommended setup parameters.";
     recommendedSecurityHeaders = mkEnableOption "additional security headers by default in each location block. Can be overwritten in each location with `recommendedSecurityHeaders`.";
     virtualHosts = mkOption {
-      type = types.attrsOf (types.submodule {
-        options.locations = mkOption {
-          type = types.attrsOf (types.submodule (submod: {
-            options = {
-              recommendedSecurityHeaders = mkOption {
-                type = types.bool;
-                default = config.services.nginx.recommendedSecurityHeaders;
-                description = "Whether to add additional security headers to this location.";
-              };
+      type = types.attrsOf (
+        types.submodule {
+          options.locations = mkOption {
+            type = types.attrsOf (
+              types.submodule (submod: {
+                options = {
+                  recommendedSecurityHeaders = mkOption {
+                    type = types.bool;
+                    default = config.services.nginx.recommendedSecurityHeaders;
+                    description = "Whether to add additional security headers to this location.";
+                  };
 
-              X-Frame-Options = mkOption {
-                type = types.str;
-                default = "DENY";
-                description = "The value to use for X-Frame-Options";
-              };
-            };
-            config = mkIf submod.config.recommendedSecurityHeaders {
-              extraConfig = mkBefore ''
-                # Enable HTTP Strict Transport Security (HSTS)
-                add_header Strict-Transport-Security "max-age=63072000; includeSubdomains; preload";
+                  X-Frame-Options = mkOption {
+                    type = types.str;
+                    default = "DENY";
+                    description = "The value to use for X-Frame-Options";
+                  };
+                };
+                config = mkIf submod.config.recommendedSecurityHeaders {
+                  extraConfig = mkBefore ''
+                    # Enable HTTP Strict Transport Security (HSTS)
+                    add_header Strict-Transport-Security "max-age=63072000; includeSubdomains; preload";
 
-                # Minimize information leaked to other domains
-                add_header Referrer-Policy "origin-when-cross-origin";
+                    # Minimize information leaked to other domains
+                    add_header Referrer-Policy "origin-when-cross-origin";
 
-                add_header X-XSS-Protection "1; mode=block";
-                add_header X-Frame-Options "${submod.config.X-Frame-Options}";
-                add_header X-Content-Type-Options "nosniff";
-              '';
-            };
-          }));
-        };
-      });
+                    add_header X-XSS-Protection "1; mode=block";
+                    add_header X-Frame-Options "${submod.config.X-Frame-Options}";
+                    add_header X-Content-Type-Options "nosniff";
+                  '';
+                };
+              })
+            );
+          };
+        }
+      );
     };
   };
 
@@ -58,7 +63,12 @@ in {
       group = "nginx";
     };
 
-    networking.firewall.allowedTCPPorts = [80 443];
+    networking.firewall.allowedTCPPorts = [
+      80
+      443
+    ];
+    # QUIC
+    networking.firewall.allowedUDPPorts = [ 443 ];
 
     # Sensible defaults for nginx
     services.nginx = {
