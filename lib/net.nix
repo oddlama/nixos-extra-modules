@@ -230,7 +230,7 @@ in {
           # Generates a hash (i.e. offset value) for a given hostname
           hashElem = x:
             builtins.bitAnd (capacity - 1)
-            (hexToDec (builtins.substring 0 16 (builtins.hashString "sha256" x)));
+            (hexToDec (builtins.substring 0 15 (builtins.hashString "sha256" x)));
           # Do linear probing. Returns the first unused value at or after the given value.
           probe = avoid: value:
             if elem value avoid
@@ -317,7 +317,7 @@ in {
           # Generates a hash (i.e. offset value) for a given hostname
           hashElem = x:
             builtins.bitAnd (capacity - 1)
-            (hexToDec (substring 0 16 (builtins.hashString "sha256" x)));
+            (hexToDec (substring 0 15 (builtins.hashString "sha256" x)));
           # Do linear probing. Returns the first unused value at or after the given value.
           probe = avoid: value:
             if elem value avoid
