@@ -32,7 +32,7 @@ let
   libNet =
     (import ./netu.nix {
       inherit (inputs.nixpkgs) lib;
-    }).lib.net;
+    }).lib;
 in
 {
   lib = recursiveUpdate prev.lib {
@@ -44,7 +44,7 @@ in
       parsers
       ;
 
-    net = recursiveUpdate (removeAttrs libNet [ "types" ]) {
+    net = recursiveUpdate (removeAttrs libNet.net [ "types" ]) {
       cidr = rec {
         # host :: (ip | mac | integer) -> cidr -> ip
         #
@@ -66,10 +66,10 @@ in
         host =
           i: n:
           let
-            cap = libNet.cidr.capacity n;
+            cap = libNet.net.cidr.capacity n;
           in
           assert assertMsg (i >= (-cap) && i < cap) "The host ${toString i} lies outside of ${n}";
-          libNet.cidr.host i n;
+          libNet.net.cidr.host i n;
         # hostCidr :: (ip | mac | integer) -> cidr -> cidr
         #
         # Returns the nth host in the given cidr range (like cidr.host)
@@ -79,7 +79,7 @@ in
         #
         # > net.cidr.hostCidr 2 "192.168.1.0/24"
         # "192.168.1.2/24"
-        hostCidr = n: x: "${libNet.cidr.host n x}/${toString (libNet.cidr.length x)}";
+        hostCidr = n: x: "${libNet.net.cidr.host n x}/${toString (libNet.net.cidr.length x)}";
         # ip :: (cidr | ip) -> ip
         #
         # Returns just the ip part of the cidr.
@@ -100,7 +100,7 @@ in
         #
         # > net.cidr.canonicalize "192.168.1.100/24"
         # "192.168.1.0/24"
-        canonicalize = x: libNet.cidr.make (libNet.cidr.length x) (ip x);
+        canonicalize = x: libNet.net.cidr.make (libNet.net.cidr.length x) (ip x);
         # mergev4 :: [cidrv4 | ipv4] -> (cidrv4 | null)
         #
         # Returns the smallest cidr network that includes all given networks.
@@ -118,7 +118,7 @@ in
             # The smallest occurring length is the first we need to start checking, since
             # any greater cidr length represents a smaller address range which
             # wouldn't contain all of the original addresses.
-            startLength = foldl' min 32 (map libNet.cidr.length addrs);
+            startLength = foldl' min 32 (map libNet.net.cidr.length addrs);
             possibleLengths = reverseList (range 0 startLength);
             # The first ip address will be "expanded" in cidr length until it covers all other
             # used addresses.
@@ -128,12 +128,12 @@ in
             bestLength = head (
               filter
                 # All given addresses must be contained by the generated address.
-                (len: all (x: libNet.cidr.contains (ip x) (libNet.cidr.make len firstIp)) addrs)
+                (len: all (x: libNet.net.cidr.contains (ip x) (libNet.net.cidr.make len firstIp)) addrs)
                 possibleLengths
             );
           in
           assert assertMsg (!any (hasInfix ":") addrs) "mergev4 cannot operate on ipv6 addresses";
-          if addrs == [ ] then null else libNet.cidr.make bestLength firstIp;
+          if addrs == [ ] then null else libNet.net.cidr.make bestLength firstIp;
         # mergev6 :: [cidrv6 | ipv6] -> (cidrv6 | null)
         #
         # Returns the smallest cidr network that includes all given networks.
@@ -151,7 +151,7 @@ in
             # The smallest occurring length is the first we need to start checking, since
             # any greater cidr length represents a smaller address range which
             # wouldn't contain all of the original addresses.
-            startLength = foldl' min 128 (map libNet.cidr.length addrs);
+            startLength = foldl' min 128 (map libNet.net.cidr.length addrs);
             possibleLengths = reverseList (range 0 startLength);
             # The first ip address will be "expanded" in cidr length until it covers all other
             # used addresses.
@@ -161,12 +161,12 @@ in
             bestLength = head (
               filter
                 # All given addresses must be contained by the generated address.
-                (len: all (x: libNet.cidr.contains (ip x) (libNet.cidr.make len firstIp)) addrs)
+                (len: all (x: libNet.net.cidr.contains (ip x) (libNet.net.cidr.make len firstIp)) addrs)
                 possibleLengths
             );
           in
           assert assertMsg (all (hasInfix ":") addrs) "mergev6 cannot operate on ipv4 addresses";
-          if addrs == [ ] then null else libNet.cidr.make bestLength firstIp;
+          if addrs == [ ] then null else libNet.net.cidr.make bestLength firstIp;
         # merge :: [cidr] -> { cidrv4 = (cidrv4 | null); cidrv6 = (cidrv4 | null); }
         #
         # Returns the smallest cidr network that includes all given networks,
@@ -202,8 +202,8 @@ in
         assignIps =
           net: reserved: hosts:
           let
-            cidrSize = libNet.cidr.size net;
-            capacity = libNet.cidr.capacity net;
+            cidrSize = libNet.net.cidr.size net;
+            capacity = libNet.net.cidr.capacity net;
             # The base address of the network. Used to convert ip-based reservations to offsets
             baseAddr = host 0 net;
             # Reserve some values for the network, host and broadcast address.
@@ -215,7 +215,7 @@ in
                 0
                 (capacity - 1)
               ]
-              ++ flip map reserved (x: if builtins.typeOf x == "int" then x else -(libNet.ip.diff baseAddr x))
+              ++ flip map reserved (x: if builtins.typeOf x == "int" then x else -(libNet.net.ip.diff baseAddr x))
             );
             nHosts = builtins.length hosts;
             nInit = builtins.length init;
@@ -282,7 +282,7 @@ in
         addPrivate =
           base: offset:
           let
-            added = libNet.mac.add base offset;
+            added = libNet.net.mac.add base offset;
             pre = substring 0 1 added;
             suf = substring 2 (-1) added;
           in
@@ -364,6 +364,6 @@ in
           } sortedHosts).assigned;
       };
     };
-    types.net = libNet.types;
+    types.net = libNet.net.types;
   };
 }
