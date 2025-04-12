@@ -460,20 +460,111 @@ let
 
   bit =
     let
-      shift =
-        n: x:
-        if n < 0 then
-          x * math.pow 2 (-n)
+      lut = {
+        "0" = 1;
+        "1" = 2;
+        "2" = 4;
+        "3" = 8;
+        "4" = 16;
+        "5" = 32;
+        "6" = 64;
+        "7" = 128;
+        "8" = 256;
+        "9" = 512;
+        "10" = 1024;
+        "11" = 2048;
+        "12" = 4096;
+        "13" = 8192;
+        "14" = 16384;
+        "15" = 32768;
+        "16" = 65536;
+        "17" = 131072;
+        "18" = 262144;
+        "19" = 524288;
+        "20" = 1048576;
+        "21" = 2097152;
+        "22" = 4194304;
+        "23" = 8388608;
+        "24" = 16777216;
+        "25" = 33554432;
+        "26" = 67108864;
+        "27" = 134217728;
+        "28" = 268435456;
+        "29" = 536870912;
+        "30" = 1073741824;
+        "31" = 2147483648;
+        "32" = 4294967296;
+        "33" = 8589934592;
+        "34" = 17179869184;
+        "35" = 34359738368;
+        "36" = 68719476736;
+        "37" = 137438953472;
+        "38" = 274877906944;
+        "39" = 549755813888;
+        "40" = 1099511627776;
+        "41" = 2199023255552;
+        "42" = 4398046511104;
+        "43" = 8796093022208;
+        "44" = 17592186044416;
+        "45" = 35184372088832;
+        "46" = 70368744177664;
+        "47" = 140737488355328;
+        "48" = 281474976710656;
+        "49" = 562949953421312;
+        "50" = 1125899906842624;
+        "51" = 2251799813685248;
+        "52" = 4503599627370496;
+        "53" = 9007199254740992;
+        "54" = 18014398509481984;
+        "55" = 36028797018963968;
+        "56" = 72057594037927936;
+        "57" = 144115188075855872;
+        "58" = 288230376151711744;
+        "59" = 576460752303423488;
+        "60" = 1152921504606846976;
+        "61" = 2305843009213693952;
+        "62" = 4611686018427387904;
+      };
+      intmin = (-9223372036854775807) - 1;
+      intmax = 9223372036854775807;
+      left =
+        a: b:
+        if a >= 64 then
+          # It's allowed to shift out all bits
+          0
+        else if a == 0 then
+          b
+        else if a < 0 then
+          right (-a) b
         else
           let
-            safeDiv = n: d: if d == 0 then 0 else n / d;
-            d = math.pow 2 n;
+            inv = 63 - a;
+            mask = if inv == 63 then intmax else lut.${toString inv} - 1;
+            masked = and b mask;
+            checker = if inv == 63 then intmin else lut.${toString inv};
+            negate = (and b checker) != 0;
+            mult = if a == 63 then intmin else lut.${toString a};
+            result = masked * mult;
           in
-          if x < 0 then not (safeDiv (not x) d) else safeDiv x d;
+          if !negate then result else intmin + result;
 
-      left = n: shift (-n);
-
-      right = shift;
+      right =
+        a: b:
+        if a >= 64 then
+          0
+        else if a == 0 then
+          b
+        else if a < 0 then
+          left (-a) b
+        else
+          let
+            masked = and b intmax;
+            negate = b < 0;
+            result = masked / lut.${toString a};
+            inv = 63 - a;
+            highest_bit = lut.${toString inv};
+          in
+          if !negate then result else result + highest_bit;
 
       and = builtins.bitAnd;
 
@@ -505,15 +596,6 @@ let
     clamp =
       a: b: c:
       max a (min b c);
-
-    pow =
-      x: n:
-      if n == 0 then
-        1
-      else if bit.and n 1 != 0 then
-        x * pow (x * x) ((n - 1) / 2)
-      else
-        pow (x * x) (n / 2);
   };
 
   parsers =
@@ -951,8 +1033,6 @@ let
               lower = bit.mask 4 n;
             in
             "${builtins.substring upper 1 digits}${builtins.substring lower 1 digits}";
-        in
-        let
           a = bit.mask 8 (bit.right 40 address.mac);
           b = bit.mask 8 (bit.right 32 address.mac);
           c = bit.mask 8 (bit.right 24 address.mac);
@@ -1390,6 +1470,13 @@ in
 
 {
   lib = {
-    inherit net;
+    inherit
+      arithmetic
+      net
+      typechecks
+      parsers
+      implementations
+      bit
+      ;
   };
 }

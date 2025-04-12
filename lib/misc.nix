@@ -1,43 +1,40 @@
-_inputs: _final: prev: let
-  inherit
-    (prev.lib)
+_inputs: final: prev:
+let
+  inherit (prev.lib)
     filter
     foldl'
     genAttrs
-    genList
     mergeAttrs
     mkMerge
     stringToCharacters
     substring
     unique
     ;
+  inherit (final.lib)
+    bit
+    ;
 
   # Counts how often each element occurrs in xs.
   # Elements must be strings.
-  countOccurrences =
-    foldl'
-    (acc: x: acc // {${x} = (acc.${x} or 0) + 1;})
-    {};
+  countOccurrences = foldl' (acc: x: acc // { ${x} = (acc.${x} or 0) + 1; }) { };
 
   # Returns all elements in xs that occur at least twice
-  duplicates = xs: let
-    occurrences = countOccurrences xs;
-  in
+  duplicates =
+    xs:
+    let
+      occurrences = countOccurrences xs;
+    in
     unique (filter (x: occurrences.${x} > 1) xs);
 
   # Concatenates all given attrsets as if calling a // b in order.
-  concatAttrs = foldl' mergeAttrs {};
+  concatAttrs = foldl' mergeAttrs { };
 
   # True if the path or string starts with /
   isAbsolutePath = x: substring 0 1 x == "/";
 
   # Merges all given attributes from the given attrsets using mkMerge.
   # Useful to merge several top-level configs in a module.
-  mergeToplevelConfigs = keys: attrs:
-    genAttrs keys (attr: mkMerge (map (x: x.${attr} or {}) attrs));
-
-  # Calculates base^exp, but careful, this overflows for results > 2^62
-  pow = base: exp: foldl' (a: x: x * a) 1 (genList (_: base) exp);
+  mergeToplevelConfigs = keys: attrs: genAttrs keys (attr: mkMerge (map (x: x.${attr} or { }) attrs));
 
   hexLiteralValues = {
     "0" = 0;
@@ -66,19 +63,17 @@ _inputs: _final: prev: let
 
   # Converts the given hex string to an integer. Only reliable for inputs in [0, 2^63),
   # after that the sign bit will overflow.
-  hexToDec = v: foldl' (acc: x: acc * 16 + hexLiteralValues.${x}) 0 (stringToCharacters v);
-in {
-  lib =
-    prev.lib
-    // {
-      inherit
-        concatAttrs
-        countOccurrences
-        duplicates
-        hexToDec
-        isAbsolutePath
-        mergeToplevelConfigs
-        pow
-        ;
-    };
+  hexToDec = v: foldl' (acc: x: (bit.left acc 4) + hexLiteralValues.${x}) 0 (stringToCharacters v);
+in
+{
+  lib = prev.lib // {
+    inherit
+      hexToDec
+      concatAttrs
+      countOccurrences
+      duplicates
+      isAbsolutePath
+      mergeToplevelConfigs
+      ;
+  };
 }
