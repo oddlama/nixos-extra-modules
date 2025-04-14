@@ -15,6 +15,10 @@
       url = "github:cachix/pre-commit-hooks.nix";
       inputs.nixpkgs.follows = "nixpkgs";
     };
+    nixt = {
+      url = "github:nix-community/nixt";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
   };
 
   outputs =
@@ -28,6 +32,18 @@
         "x86_64-linux"
         "aarch64-linux"
       ];
+      flake.__nixt = inputs.nixt.lib.grow {
+        blocks = import ./tests {
+          inherit (inputs) nixt;
+          pkgs = import inputs.nixpkgs {
+            system = "x86_64-linux";
+            config.allowUnfree = true;
+            overlays = [
+              self.overlays.default
+            ];
+          };
+        };
+      };
 
       flake.modules = {
         flake = {
@@ -74,6 +90,10 @@
             commands = with pkgs; [
               {
                 package = statix;
+                help = "Lint nix code";
+              }
+              {
+                package = inputs.nixt.packages.${system}.default;
                 help = "Lint nix code";
               }
               {
