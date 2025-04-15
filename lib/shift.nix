@@ -109,7 +109,7 @@ let
   arithmeticRight =
     a: b:
     if a >= 64 then
-      0
+      if b < 0 then -1 else 0
     else if a == 0 then
       b
     else if a < 0 then

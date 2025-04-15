@@ -393,6 +393,7 @@ block ./shift.nix [
     (it "negative logical right shift 21068 >> 0" (logicalRight 0 (-21068) == -21068))
     (it "arithmetic right shift 21068 >> 0" (arithmeticRight 0 21068 == 21068))
     (it "negative arithmetic right shift 21068 >> 0" (arithmeticRight 0 (-21068) == -21068))
-
+    (it "arithmetic right shift -1 >> 32" (arithmeticRight 32 (-1) == (-1)))
+    (it "arithmetic right shift -1 >> 102" (arithmeticRight 102 (-1) == (-1)))
   ])
 ]

@@ -1160,7 +1160,10 @@ let
     # coshadow :: integer -> (ip | mac | integer) -> (ip | mac | integer)
     coshadow = n: a: and (not (right n (left n (coerce a (-1))))) a;
 
-    # coerce :: (ip | mac | integer) -> (ip | mac | integer) -> (ip | mac | integer)
+    # coerce target value
+    # coerce value to the type of target
+    # coerce :: A -> (ip | mac | integer) -> A
+    # where A :: (ip | mac | integer)
     coerce =
       target: value:
       if target ? ipv6 then
