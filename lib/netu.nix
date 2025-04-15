@@ -463,24 +463,16 @@ let
       inherit (import ./shift.nix) left arithmeticRight logicalRight;
       leftOrArithRight = a: if a > 0 then left a else arithmeticRight (-a);
       arithRightOrLeft = a: if a > 0 then arithmeticRight a else left (-a);
-      and = builtins.bitAnd;
 
-      or = builtins.bitOr;
+      not = builtins.bitXor (-1);
 
-      xor = builtins.bitXor;
-
-      not = xor (-1);
-
-      mask = n: and (left n 1 - 1);
+      mask = n: builtins.bitAnd (left n 1 - 1);
     in
     {
       inherit
         left
         arithmeticRight
         logicalRight
-        and
-        or
-        xor
         not
         mask
         leftOrArithRight
@@ -649,7 +641,7 @@ let
       };
 
       fromDecimalDigits = builtins.foldl' (a: c: a * 10 + c) 0;
-      fromHexadecimalDigits = builtins.foldl' (a: bit.or (bit.left 4 a)) 0;
+      fromHexadecimalDigits = builtins.foldl' (a: builtins.bitOr (bit.left 4 a)) 0;
 
       # disallow leading zeros
       decimal = bind (digit decimalDigits) (
@@ -671,7 +663,7 @@ let
           octet' = then_ dot octet;
 
           fromOctets = a: b: c: d: {
-            ipv4 = bit.or (bit.left 8 (bit.or (bit.left 8 (bit.or (bit.left 8 a) b)) c)) d;
+            ipv4 = builtins.bitOr (bit.left 8 (builtins.bitOr (bit.left 8 (builtins.bitOr (bit.left 8 a) b)) c)) d;
           };
         in
         liftA4 fromOctets octet octet' octet' octet';
@@ -701,10 +693,10 @@ let
               in
               pure {
                 ipv6 = {
-                  a = bit.or (bit.left 16 a) b;
-                  b = bit.or (bit.left 16 c) d;
-                  c = bit.or (bit.left 16 e) f;
-                  d = bit.or (bit.left 16 g) h;
+                  a = builtins.bitOr (bit.left 16 a) b;
+                  b = builtins.bitOr (bit.left 16 c) d;
+                  c = builtins.bitOr (bit.left 16 e) f;
+                  d = builtins.bitOr (bit.left 16 g) h;
                 };
               };
 
@@ -767,7 +759,7 @@ let
           octet' = then_ colon octet;
 
           fromOctets = a: b: c: d: e: f: {
-            mac = bit.or (bit.left 8 (bit.or (bit.left 8 (bit.or (bit.left 8 (bit.or (bit.left 8 (bit.or (bit.left 8 a) b)) c)) d)) e)) f;
+            mac = builtins.bitOr (bit.left 8 (builtins.bitOr (bit.left 8 (builtins.bitOr (bit.left 8 (builtins.bitOr (bit.left 8 (builtins.bitOr (bit.left 8 a) b)) c)) d)) e)) f;
           };
         in
         liftA6 fromOctets octet octet' octet' octet' octet' octet';
@@ -963,22 +955,22 @@ let
       if a ? ipv6 then
         {
           ipv6 = {
-            a = bit.or a.ipv6.a b.ipv6.a;
-            b = bit.or a.ipv6.b b.ipv6.b;
-            c = bit.or a.ipv6.c b.ipv6.c;
-            d = bit.or a.ipv6.d b.ipv6.d;
+            a = builtins.bitOr a.ipv6.a b.ipv6.a;
+            b = builtins.bitOr a.ipv6.b b.ipv6.b;
+            c = builtins.bitOr a.ipv6.c b.ipv6.c;
+            d = builtins.bitOr a.ipv6.d b.ipv6.d;
           };
         }
       else if a ? ipv4 then
         {
-          ipv4 = bit.or a.ipv4 b.ipv4;
+          ipv4 = builtins.bitOr a.ipv4 b.ipv4;
         }
       else if a ? mac then
         {
-          mac = bit.or a.mac b.mac;
+          mac = builtins.bitOr a.mac b.mac;
         }
       else
-        bit.or a b;
+        builtins.bitOr a b;
 
     # and :: (ip | mac | integer) -> (ip | mac | integer) -> (ip | mac | integer)
     and =
@@ -989,22 +981,22 @@ let
       if a ? ipv6 then
         {
           ipv6 = {
-            a = bit.and a.ipv6.a b.ipv6.a;
-            b = bit.and a.ipv6.b b.ipv6.b;
-            c = bit.and a.ipv6.c b.ipv6.c;
-            d = bit.and a.ipv6.d b.ipv6.d;
+            a = builtins.bitAnd a.ipv6.a b.ipv6.a;
+            b = builtins.bitAnd a.ipv6.b b.ipv6.b;
+            c = builtins.bitAnd a.ipv6.c b.ipv6.c;
+            d = builtins.bitAnd a.ipv6.d b.ipv6.d;
           };
         }
       else if a ? ipv4 then
         {
-          ipv4 = bit.and a.ipv4 b.ipv4;
+          ipv4 = builtins.bitAnd a.ipv4 b.ipv4;
         }
       else if a ? mac then
         {
-          mac = bit.and a.mac b.mac;
+          mac = builtins.bitAnd a.mac b.mac;
         }
       else
-        bit.and a b;
+        builtins.bitAnd a b;
 
     # not :: (ip | mac | integer) -> (ip | mac | integer)
     not =
@@ -1082,7 +1074,7 @@ let
         result.a == 0 && result.b == 0 && bit.arithmeticRight 31 result.c == 0
         || result.a == max32 && result.b == max32 && bit.arithmeticRight 31 result.c == 1
       then
-        bit.or (bit.left 32 result.c) result.d
+        builtins.bitOr (bit.left 32 result.c) result.d
       else
         {
           ipv6 = result;
@@ -1103,7 +1095,7 @@ let
           _6 = bit.mask 32 (bit.arithRightOrLeft (i - 64) x);
           _7 = bit.mask 32 (bit.arithRightOrLeft (i - 96) x);
         };
-        ors = builtins.foldl' bit.or 0;
+        ors = builtins.foldl' builtins.bitOr 0;
       in
       i: x:
       if x ? ipv6 then
@@ -1212,7 +1204,7 @@ let
       else if target ? mac then
         if value ? ipv6 then
           {
-            mac = bit.or (bit.left 32 (bit.mask 16 value.ipv6.c)) value.ipv6.d;
+            mac = builtins.bitOr (bit.left 32 (bit.mask 16 value.ipv6.c)) value.ipv6.d;
           }
         else if value ? ipv4 then
           {
@@ -1225,7 +1217,7 @@ let
             mac = bit.mask 48 value;
           }
       else if value ? ipv6 then
-        builtins.foldl' bit.or 0 [
+        builtins.foldl' builtins.bitOr 0 [
           (bit.left 96 value.ipv6.a)
           (bit.left 64 value.ipv6.b)
           (bit.left 32 value.ipv6.c)
