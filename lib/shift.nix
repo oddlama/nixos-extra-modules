@@ -119,7 +119,7 @@ let
         negate = b < 0;
         mask = if a == 63 then intmax else (builtins.elemAt lut a) - 1;
         round_down = negate && (builtins.bitAnd mask b != 0);
-        result = (b / 2 / (builtins.elemAt lut (a - 1)));
+        result = b / 2 / (builtins.elemAt lut (a - 1));
       in
       if round_down then result - 1 else result;
 in

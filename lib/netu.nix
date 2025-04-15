@@ -123,7 +123,7 @@ let
             delta' = typechecks.numeric function "delta" delta;
             mac' = typechecks.mac function "mac" mac;
           in
-          builders.mac (implementations.mac.add delta' mac');
+          builders.mac (arithmetic.add delta' mac');
 
         # diff :: mac -> mac -> integer
         #
@@ -141,7 +141,7 @@ let
             minuend' = typechecks.mac function "minuend" minuend;
             subtrahend' = typechecks.mac function "subtrahend" subtrahend;
           in
-          implementations.mac.diff minuend' subtrahend';
+          arithmetic.diff minuend' subtrahend';
 
         # subtract :: (ip | mac | integer) -> mac -> mac
         #
@@ -159,7 +159,7 @@ let
             delta' = typechecks.numeric function "delta" delta;
             mac' = typechecks.mac function "mac" mac;
           in
-          builders.mac (implementations.mac.subtract delta' mac');
+          builders.mac (arithmetic.subtract delta' mac');
       };
 
       cidr = {
@@ -531,10 +531,10 @@ let
       ap = liftA2 (a: a);
 
       # then_ :: parser a -> parser b -> parser b
-      then_ = liftA2 (a: b: b);
+      then_ = liftA2 (_: b: b);
 
       # empty :: parser a
-      empty = string: null;
+      empty = _: null;
 
       # alt :: parser a -> parser a -> parser a
       alt =
@@ -683,8 +683,6 @@ let
           colon = char ":";
 
           hextet = limit 4 hexadecimal;
-
-          hextet' = then_ colon hextet;
 
           fromHextets =
             hextets:
@@ -1076,7 +1074,7 @@ let
     diff =
       a: b:
       let
-        toIPv6 = coerce ({ ipv6.a = 0; });
+        toIPv6 = coerce { ipv6.a = 0; };
         result = (subtract b (toIPv6 a)).ipv6;
         max32 = bit.left 32 1 - 1;
       in
@@ -1233,37 +1231,11 @@ let
           (bit.left 32 value.ipv6.c)
           value.ipv6.d
         ]
-      else if value ? ipv4 then
-        value.ipv4
-      else if value ? mac then
-        value.mac
       else
-        value;
+        value.ipv4 or value.mac or value;
   };
 
   implementations = {
-    ip = {
-      # add :: (ip | mac | integer) -> ip -> ip
-      add = arithmetic.add;
-
-      # diff :: ip -> ip -> (ipv6 | integer)
-      diff = arithmetic.diff;
-
-      # subtract :: (ip | mac | integer) -> ip -> ip
-      subtract = arithmetic.subtract;
-    };
-
-    mac = {
-      # add :: (ip | mac | integer) -> mac -> mac
-      add = arithmetic.add;
-
-      # diff :: mac -> mac -> (ipv6 | integer)
-      diff = arithmetic.diff;
-
-      # subtract :: (ip | mac | integer) -> mac -> mac
-      subtract = arithmetic.subtract;
-    };
-
     cidr = rec {
       # add :: (ip | mac | integer) -> cidr -> cidr
       add =
