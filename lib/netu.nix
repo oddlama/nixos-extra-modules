@@ -460,7 +460,9 @@ let
 
   bit =
     let
-      inherit (import ./shift.nix) left right;
+      inherit (import ./shift.nix) left arithmeticRight logicalRight;
+      leftOrArithRight = a: if a > 0 then left a else arithmeticRight (-a);
+      arithRightOrLeft = a: if a > 0 then arithmeticRight a else left (-a);
       and = builtins.bitAnd;
 
       or = builtins.bitOr;
@@ -474,12 +476,15 @@ let
     {
       inherit
         left
-        right
+        arithmeticRight
+        logicalRight
         and
         or
         xor
         not
         mask
+        leftOrArithRight
+        arithRightOrLeft
         ;
     };
 
@@ -708,7 +713,7 @@ let
           ipv4' = fmap (
             address:
             let
-              upper = bit.right 16 address.ipv4;
+              upper = bit.arithmeticRight 16 address.ipv4;
               lower = bit.mask 16 address.ipv4;
             in
             [
@@ -788,9 +793,9 @@ let
         address:
         let
           abcd = address.ipv4;
-          abc = bit.right 8 abcd;
-          ab = bit.right 8 abc;
-          a = bit.right 8 ab;
+          abc = bit.arithmeticRight 8 abcd;
+          ab = bit.arithmeticRight 8 abc;
+          a = bit.arithmeticRight 8 ab;
           b = bit.mask 8 ab;
           c = bit.mask 8 abc;
           d = bit.mask 8 abcd;
@@ -815,7 +820,7 @@ let
           toHexString =
             n:
             let
-              rest = bit.right 4 n;
+              rest = bit.arithmeticRight 4 n;
               current = bit.mask 4 n;
               prefix = if rest == 0 then "" else toHexString rest;
             in
@@ -829,13 +834,13 @@ let
         else
           let
 
-            a = bit.right 16 address.ipv6.a;
+            a = bit.arithmeticRight 16 address.ipv6.a;
             b = bit.mask 16 address.ipv6.a;
-            c = bit.right 16 address.ipv6.b;
+            c = bit.arithmeticRight 16 address.ipv6.b;
             d = bit.mask 16 address.ipv6.b;
-            e = bit.right 16 address.ipv6.c;
+            e = bit.arithmeticRight 16 address.ipv6.c;
             f = bit.mask 16 address.ipv6.c;
-            g = bit.right 16 address.ipv6.d;
+            g = bit.arithmeticRight 16 address.ipv6.d;
             h = bit.mask 16 address.ipv6.d;
 
             hextets = [
@@ -924,16 +929,16 @@ let
           octet =
             n:
             let
-              upper = bit.right 4 n;
+              upper = bit.arithmeticRight 4 n;
               lower = bit.mask 4 n;
             in
             "${builtins.substring upper 1 digits}${builtins.substring lower 1 digits}";
-          a = bit.mask 8 (bit.right 40 address.mac);
-          b = bit.mask 8 (bit.right 32 address.mac);
-          c = bit.mask 8 (bit.right 24 address.mac);
-          d = bit.mask 8 (bit.right 16 address.mac);
-          e = bit.mask 8 (bit.right 8 address.mac);
-          f = bit.mask 8 (bit.right 0 address.mac);
+          a = bit.mask 8 (bit.arithmeticRight 40 address.mac);
+          b = bit.mask 8 (bit.arithmeticRight 32 address.mac);
+          c = bit.mask 8 (bit.arithmeticRight 24 address.mac);
+          d = bit.mask 8 (bit.arithmeticRight 16 address.mac);
+          e = bit.mask 8 (bit.arithmeticRight 8 address.mac);
+          f = bit.mask 8 (bit.arithmeticRight 0 address.mac);
         in
         "${octet a}:${octet b}:${octet c}:${octet d}:${octet e}:${octet f}";
 
@@ -1030,7 +1035,7 @@ let
     add =
       let
         split = a: {
-          fst = bit.mask 32 (bit.right 32 a);
+          fst = bit.mask 32 (bit.arithmeticRight 32 a);
           snd = bit.mask 32 a;
         };
       in
@@ -1076,8 +1081,8 @@ let
         max32 = bit.left 32 1 - 1;
       in
       if
-        result.a == 0 && result.b == 0 && bit.right 31 result.c == 0
-        || result.a == max32 && result.b == max32 && bit.right 31 result.c == 1
+        result.a == 0 && result.b == 0 && bit.arithmeticRight 31 result.c == 0
+        || result.a == max32 && result.b == max32 && bit.arithmeticRight 31 result.c == 1
       then
         bit.or (bit.left 32 result.c) result.d
       else
@@ -1092,13 +1097,13 @@ let
     right =
       let
         step = i: x: {
-          _1 = bit.mask 32 (bit.right (i + 96) x);
-          _2 = bit.mask 32 (bit.right (i + 64) x);
-          _3 = bit.mask 32 (bit.right (i + 32) x);
-          _4 = bit.mask 32 (bit.right i x);
-          _5 = bit.mask 32 (bit.right (i - 32) x);
-          _6 = bit.mask 32 (bit.right (i - 64) x);
-          _7 = bit.mask 32 (bit.right (i - 96) x);
+          _1 = bit.mask 32 (bit.arithRightOrLeft (i + 96) x);
+          _2 = bit.mask 32 (bit.arithRightOrLeft (i + 64) x);
+          _3 = bit.mask 32 (bit.arithRightOrLeft (i + 32) x);
+          _4 = bit.mask 32 (bit.arithRightOrLeft i x);
+          _5 = bit.mask 32 (bit.arithRightOrLeft (i - 32) x);
+          _6 = bit.mask 32 (bit.arithRightOrLeft (i - 64) x);
+          _7 = bit.mask 32 (bit.arithRightOrLeft (i - 96) x);
         };
         ors = builtins.foldl' bit.or 0;
       in
@@ -1140,14 +1145,14 @@ let
         }
       else if x ? ipv4 then
         {
-          ipv4 = bit.mask 32 (bit.right i x.ipv4);
+          ipv4 = bit.mask 32 (bit.arithRightOrLeft i x.ipv4);
         }
       else if x ? mac then
         {
-          mac = bit.mask 48 (bit.right i x.mac);
+          mac = bit.mask 48 (bit.arithRightOrLeft i x.mac);
         }
       else
-        bit.right i x;
+        bit.arithRightOrLeft i x;
 
     # shadow :: integer -> (ip | mac | integer) -> (ip | mac | integer)
     shadow = n: a: and (right n (left n (coerce a (-1)))) a;
@@ -1175,16 +1180,16 @@ let
             ipv6 = {
               a = 0;
               b = 0;
-              c = bit.right 32 value.mac;
+              c = bit.arithmeticRight 32 value.mac;
               d = bit.mask 32 value.mac;
             };
           }
         else
           {
             ipv6 = {
-              a = bit.mask 32 (bit.right 96 value);
-              b = bit.mask 32 (bit.right 64 value);
-              c = bit.mask 32 (bit.right 32 value);
+              a = bit.mask 32 (bit.arithmeticRight 96 value);
+              b = bit.mask 32 (bit.arithmeticRight 64 value);
+              c = bit.mask 32 (bit.arithmeticRight 32 value);
               d = bit.mask 32 value;
             };
           }
@@ -1264,7 +1269,7 @@ let
           size' = size cidr;
         in
         {
-          base = arithmetic.left size' (arithmetic.add delta (arithmetic.right size' cidr.base));
+          base = arithmetic.left size' (arithmetic.add delta (arithmetic.arithRightOrLeft size' cidr.base));
           inherit (cidr) length;
         };
 

@@ -75,7 +75,7 @@ let
     else if a == 0 then
       b
     else if a < 0 then
-      right (-a) b
+      throw "Inverse Left Shift not supported"
     else
       let
         inv = 63 - a;
@@ -87,14 +87,14 @@ let
         result = masked * mult;
       in
       if !negate then result else intmin + result;
-  right =
+  logicalRight =
     a: b:
     if a >= 64 then
       0
     else if a == 0 then
       b
     else if a < 0 then
-      left (-a) b
+      throw "Inverse right Shift not supported"
     else
       let
         masked = builtins.bitAnd b intmax;
@@ -106,7 +106,23 @@ let
         highest_bit = builtins.elemAt lut inv;
       in
       if !negate then result else result + highest_bit;
+  arithmeticRight =
+    a: b:
+    if a >= 64 then
+      0
+    else if a == 0 then
+      b
+    else if a < 0 then
+      throw "Inverse right Shift not supported"
+    else
+      let
+        negate = b < 0;
+        mask = if a == 63 then intmax else (builtins.elemAt lut a) - 1;
+        round_down = negate && (builtins.bitAnd mask b != 0);
+        result = (b / 2 / (builtins.elemAt lut (a - 1)));
+      in
+      if round_down then result - 1 else result;
 in
 {
-  inherit left right;
+  inherit left logicalRight arithmeticRight;
 }
