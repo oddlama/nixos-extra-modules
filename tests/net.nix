@@ -72,6 +72,14 @@ block ./net.nix [
     (it "child 1" (lib.net.cidr.child "10.10.10.0/24" "10.0.0.0/8"))
     (it "child 2" (!lib.net.cidr.child "127.0.0.0/24" "10.0.0.0/8"))
   ])
+  (describe "cidr" [
+    (it "host 255" (lib.net.cidr.host 255 "192.168.1.0/24" == "192.168.1.255"))
+    (it "host err" ((builtins.tryEval (lib.net.cidr.host 256 "192.168.1.0/24")).success == false))
+    (it "host -1" (lib.net.cidr.host (-1) "192.168.1.0/24" == "192.168.1.255"))
+    (it "host -256" (lib.net.cidr.host (-256) "192.168.1.0/24" == "192.168.1.0"))
+    (it "host -err" ((builtins.tryEval (lib.net.cidr.host (-257) "192.168.1.0/24")).success == false))
+    (it "host ip" (lib.net.cidr.host "0.0.0.1" "192.168.1.0/24" == "192.168.1.1"))
+  ])
   (describe "arithmetic" [
     (it "coshadow 1" (
       (lib.arithmetic.coshadow 0 expected.cidrv6.base4.base) == expected.cidrv6.empty.base
