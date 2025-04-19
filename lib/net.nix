@@ -67,9 +67,13 @@ in
           i: n:
           let
             cap = libNet.net.cidr.capacity n;
+            intCheck = builtins.isInt i -> (i >= (-cap) && i < cap);
+            ipCheck = libNet.net.types.ip.check i -> ((libNet.net.types.ip-in n).check result);
+
+            result = libNet.net.cidr.host i n;
           in
-          assert assertMsg (i >= (-cap) && i < cap) "The host ${toString i} lies outside of ${n}";
-          libNet.net.cidr.host i n;
+          assert assertMsg (ipCheck && intCheck) "The host ${toString i} lies outside of ${n}";
+          result;
         # hostCidr :: (ip | mac | integer) -> cidr -> cidr
         #
         # Returns the nth host in the given cidr range (like cidr.host)
