@@ -36,7 +36,7 @@ in
     flip mapAttrsToList memberWG (
       networkName: networkCfg:
       let
-        assertionPrefix = "While evaluation the wireguard network ${networkName}:";
+        assertionPrefix = "While evaluating the wireguard network ${networkName}:";
         hostCfg = networkCfg.hosts.${config.node.name};
       in
       [

@@ -23,7 +23,7 @@ in
                 options = {
                   host = mkOption {
                     type = types.str;
-                    description = "The host name or IP addresse for reaching the server node.";
+                    description = "The host name or IP address under which the server node is reachable from any client.";
                   };
                   idFile = mkOption {
                     type = types.nullOr types.path;
@@ -61,16 +61,9 @@ in
                           config.id =
                             let
                               inherit (wgConf) idFile;
+                              idFromFile = if (idFile == null) then null else (importJSON idFile).${name} or null;
                             in
-                            if (idFile == null) then
-                              null
-                            else
-                              (
-                                let
-                                  conf = importJSON idFile;
-                                in
-                                conf.${name} or null
-                              );
+                            lib.mkIf (idFromFile != null) idFromFile;
                           options = {
                             server = mkOption {
                               default = false;
