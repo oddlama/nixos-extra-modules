@@ -98,7 +98,6 @@ in
         '}';
         error_log syslog:server=unix:/dev/log,nohostname;
         access_log syslog:server=unix:/dev/log,nohostname json_combined;
-        ssl_ecdh_curve secp384r1;
       '';
 
       # Default host that rejects everything.
