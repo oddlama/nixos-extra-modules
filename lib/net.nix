@@ -311,7 +311,7 @@ in
         assignMacs =
           base: size: reserved: hosts:
           let
-            capacity = libNet.bit.left 1 size;
+            capacity = libNet.bit.left (size - 1) 2;
             baseAsInt = libNet.net.mac.diff base "00:00:00:00:00:00";
             init = unique (
               flip map reserved (x: if builtins.typeOf x == "int" then x else libNet.net.mac.diff x base)
