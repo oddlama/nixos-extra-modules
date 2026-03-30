@@ -37,6 +37,8 @@ in
 
     lib.microvm.interfaces = guestCfg.microvm.interfaces;
 
+    # FIXME: broken by https://github.com/microvm-nix/microvm.nix/pull/453
+    networking.hostId = mkForce null;
     microvm = {
       hypervisor = mkDefault "qemu";
 
@@ -49,6 +51,10 @@ in
       # Add a writable store overlay, but since this is always ephemeral
       # disable any store optimization from nix.
       writableStoreOverlay = "/nix/.rw-store";
+
+      # FIXME: broken by https://github.com/microvm-nix/microvm.nix/pull/453
+      machineId = null;
+      registerWithMachined = false;
 
       # MACVTAP bridge to the host's network
       interfaces = flip mapAttrsToList guestCfg.microvm.interfaces (
