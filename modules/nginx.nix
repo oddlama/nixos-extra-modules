@@ -57,11 +57,6 @@ in
   };
 
   config = mkIf (config.services.nginx.enable && config.services.nginx.recommendedSetup) {
-    age.secrets."dhparams.pem" = mkIf (config ? age) {
-      generator.script = "dhparams";
-      mode = "440";
-      group = "nginx";
-    };
 
     networking.firewall.allowedTCPPorts = [
       80
@@ -81,7 +76,6 @@ in
 
       # SSL config
       sslCiphers = "EECDH+AESGCM:EDH+AESGCM:!aNULL";
-      sslDhparam = mkIf (config ? age) config.age.secrets."dhparams.pem".path;
       commonHttpConfig = ''
         log_format json_combined escape=json '{'
           '"time": $msec,'
