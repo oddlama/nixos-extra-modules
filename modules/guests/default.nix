@@ -73,7 +73,7 @@
             before = [fsMountUnit];
             after = [
               "zfs-import-${utils.escapeSystemdPath zfsCfg.pool}.service"
-              "zfs-mount.target"
+              "zfs-mount.service"
             ];
             unitConfig.DefaultDependencies = "no";
             serviceConfig.Type = "oneshot";
